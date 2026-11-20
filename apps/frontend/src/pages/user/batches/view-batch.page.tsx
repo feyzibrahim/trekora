@@ -63,6 +63,7 @@ import { CancelBookingDialog } from "../bookings/_components/cancel-booking-dial
 import { CreateBookingDialog } from "../bookings/_components/create-booking-dialog";
 import { BatchBookingsCard } from "./_components/batch-bookings-card";
 import { BatchCostBreakdownModal } from "./_components/batch-cost-breakdown-modal";
+import { BatchExpensesCard } from "./_components/batch-expenses-card";
 import { BatchLogsCard } from "./_components/batch-logs-card";
 import { BatchOfferDialog } from "./_components/batch-offer-dialog";
 import { BatchReportModal } from "./_components/batch-report-modal";
@@ -1096,6 +1097,9 @@ export default function BatchDetailsPage() {
                             </Tabs>
                         </CardContent>
                     </Card>
+
+                    {/* Batch Expenses Card */}
+                    {id && <BatchExpensesCard batchId={id} />}
                 </div>
 
                 {/* Sidebar Column (Right 1-Col) */}
@@ -1116,6 +1120,15 @@ export default function BatchDetailsPage() {
                                 <Plus className="w-4 h-4 mr-2" />
                                 New Booking for this Batch
                             </Button>
+                            <NavLink to={`/expenses/create?batchId=${id}`} className="block">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-xs font-semibold"
+                                >
+                                    <Receipt className="w-4 h-4 mr-2 text-primary" />
+                                    Request Batch Expense
+                                </Button>
+                            </NavLink>
                             <NavLink to={`/batches/edit/${id}`} className="block">
                                 <Button
                                     variant="outline"

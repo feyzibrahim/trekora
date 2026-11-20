@@ -125,6 +125,7 @@ apps/backend/src/modules/[feature]/
 ```
 
 ### 3.2 Backend Conventions
+- **Auth & Permission Guard Imports**: Any NestJS feature module whose controller uses `AuthGuard` or `PermissionGuard` **must** import `JwtModule.register({})`, `AuthModule`, and `PermissionModule` in its `@Module({ imports: [...] })` array. Omitting `JwtModule.register({})` or `AuthModule` causes an `UnknownDependenciesException` because `AuthGuard` requires `JwtService` in the module context.
 - **Audit Columns**: Core entities should include standard timestamps (`createdAt`, `updatedAt`) and track user actions (`createdBy`, `updatedBy`, `organizationId`).
 - **Activity Logging**: Mutation operations (status changes, payments, cancellations, transfers) must record an audit entry in the activity log table.
 - **Transactions**: Multi-table operations (e.g., booking creation with customers and payments) must use TypeORM QueryRunner or DataSource transactions.
