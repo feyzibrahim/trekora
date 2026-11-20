@@ -432,18 +432,35 @@ export class EmployeeService {
   }
 
   async findProfile(id: string, organizationId: string): Promise<Employee | null> {
-    const employee = await this.employeeRepository.findOne({
+    if (!id || !organizationId) {
+      return null;
+    }
+
+    const employees = await this.employeeRepository.find({
       where: { userId: id, organizationId },
       relations: {
         branch: true,
         organization: true,
         user: true,
       },
+      order: { createdAt: 'ASC' },
     });
 
-    if (!employee) {
+    if (employees.length === 0) {
       return null;
     }
+
+    // Disambiguate if multiple employee records share this userId (e.g., from legacy creation bug):
+    // prefer the employee whose email matches the logged-in user's email, then ACTIVE status, then earliest created.
+    const employee =
+      employees.find(
+        (e) =>
+          e.email &&
+          e.user?.email &&
+          e.email.toLowerCase() === e.user.email.toLowerCase(),
+      ) ??
+      employees.find((e) => e.status === EmployeeStatus.ACTIVE) ??
+      employees[0];
 
     await this.loadPermissionSetsForEmployee(employee);
 
@@ -655,15 +672,33 @@ export class EmployeeService {
   }
 
   async findOneByUserIdAndOrgId(userId: string, organizationId: string): Promise<Employee | null> {
-    return this.employeeRepository.findOne({
+    if (!userId || !organizationId) {
+      return null;
+    }
+
+    const employees = await this.employeeRepository.find({
       where: {
         userId,
         organizationId,
         status: EmployeeStatus.ACTIVE,
         isActive: true,
       },
-      relations: ['organization'],
+      relations: ['organization', 'user'],
+      order: { createdAt: 'ASC' },
     });
+
+    if (employees.length === 0) {
+      return null;
+    }
+
+    return (
+      employees.find(
+        (e) =>
+          e.email &&
+          e.user?.email &&
+          e.email.toLowerCase() === e.user.email.toLowerCase(),
+      ) ?? employees[0]
+    );
   }
 
   async reactivate(id: string, performedById: string): Promise<Employee | null> {
