@@ -628,4 +628,48 @@ export const permissions = [
     action: 'approve',
     description: 'Approve or reject employee leave requests',
   },
+
+  // Batch Expense Management permissions
+  {
+    name: 'expense.create',
+    resource: 'expense',
+    action: 'create',
+    description: 'Create and submit batch expense payment requests',
+  },
+  {
+    name: 'expense.read',
+    resource: 'expense',
+    action: 'read',
+    description: 'View all organization batch expenses and tracking analytics',
+  },
+  {
+    name: 'expense.view',
+    resource: 'expense',
+    action: 'view',
+    description: 'View detailed batch expense records and proof screenshots',
+  },
+  {
+    name: 'expense.update',
+    resource: 'expense',
+    action: 'update',
+    description: 'Edit batch expense requests',
+  },
+  {
+    name: 'expense.delete',
+    resource: 'expense',
+    action: 'delete',
+    description: 'Delete batch expense records',
+  },
+  {
+    name: 'expense.approve',
+    resource: 'expense',
+    action: 'approve',
+    description: 'Approve or reject batch expense payment requests',
+  },
+  {
+    name: 'expense.mark_sent',
+    resource: 'expense',
+    action: 'mark_sent',
+    description: 'Mark approved batch expenses as sent and upload payment proof screenshots',
+  },
 ];

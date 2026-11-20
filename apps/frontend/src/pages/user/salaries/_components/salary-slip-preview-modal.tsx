@@ -322,9 +322,13 @@ export function SalarySlipPreviewModal({
                             <div className="grid grid-cols-4 px-3 py-2 bg-emerald-50/60">
                                 <span className="text-emerald-700 font-semibold">
                                     Additional Incentive{" "}
-                                    {salary.incentiveNote
-                                        ? `(${salary.incentiveNote})`
-                                        : ""}
+                                    {salary.incentiveMode === "itemized" &&
+                                    salary.incentiveItems &&
+                                    salary.incentiveItems.length > 0
+                                        ? `(Itemized — ${salary.incentiveItems.length} ${salary.incentiveItems.length === 1 ? "item" : "items"})`
+                                        : salary.incentiveNote
+                                          ? `(${salary.incentiveNote})`
+                                          : ""}
                                 </span>
                                 <span className="text-right font-mono font-bold text-emerald-700 pr-3 border-r border-slate-200">
                                     {fmt(salary.additionalIncentive)}
@@ -344,6 +348,119 @@ export function SalarySlipPreviewModal({
                             </div>
                         </div>
                     </div>
+
+                    {/* Itemized Incentive Breakdown */}
+                    {salary.incentiveMode === "itemized" &&
+                        salary.incentiveItems &&
+                        salary.incentiveItems.length > 0 && (
+                            <div className="space-y-1.5">
+                                <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+                                    Incentive Breakdown
+                                </div>
+                                <div className="border border-emerald-200 rounded overflow-hidden">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="bg-emerald-50 text-emerald-800 text-[11px] uppercase">
+                                                <th className="px-3 py-2 text-left font-bold">
+                                                    Name
+                                                </th>
+                                                <th className="px-3 py-2 text-left font-bold">
+                                                    Type
+                                                </th>
+                                                <th className="px-3 py-2 text-right font-bold">
+                                                    Amount
+                                                </th>
+                                                <th className="px-3 py-2 text-right font-bold">
+                                                    Count
+                                                </th>
+                                                <th className="px-3 py-2 text-right font-bold">
+                                                    Total
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-200">
+                                            {salary.incentiveItems.map(
+                                                (item, idx) => {
+                                                    const rowTotal = Number(
+                                                        item.total ??
+                                                            Number(
+                                                                item.amount || 0
+                                                            ) *
+                                                                Number(
+                                                                    item.count ||
+                                                                        0
+                                                                )
+                                                    );
+                                                    return (
+                                                        <tr
+                                                            key={idx}
+                                                            className={
+                                                                idx % 2 === 1
+                                                                    ? "bg-slate-50"
+                                                                    : ""
+                                                            }
+                                                        >
+                                                            <td className="px-3 py-1.5 font-medium">
+                                                                {item.name ||
+                                                                    "—"}
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-slate-600">
+                                                                {item.type ||
+                                                                    "—"}
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right font-mono">
+                                                                {fmt(
+                                                                    item.amount
+                                                                )}
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right font-mono">
+                                                                {Number(
+                                                                    item.count ||
+                                                                        0
+                                                                )}
+                                                            </td>
+                                                            <td className="px-3 py-1.5 text-right font-mono font-semibold text-emerald-700">
+                                                                {fmt(rowTotal)}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
+                                            )}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="bg-emerald-50 font-bold text-emerald-800 border-t border-emerald-200">
+                                                <td
+                                                    colSpan={4}
+                                                    className="px-3 py-2 text-right"
+                                                >
+                                                    Total Incentives
+                                                </td>
+                                                <td className="px-3 py-2 text-right font-mono">
+                                                    {fmt(
+                                                        salary.incentiveItems.reduce(
+                                                            (sum, item) =>
+                                                                sum +
+                                                                Number(
+                                                                    item.total ??
+                                                                        Number(
+                                                                            item.amount ||
+                                                                                0
+                                                                        ) *
+                                                                            Number(
+                                                                                item.count ||
+                                                                                    0
+                                                                            )
+                                                                ),
+                                                            0
+                                                        )
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
 
                     {/* Net Payable */}
                     <div

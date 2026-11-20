@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -17,6 +18,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -25,27 +31,50 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import axiosInstance from "@/lib/axios";
+import { cn, getFileUrl, getInitials } from "@/lib/utils";
+import { EmployeeService } from "@/services/employee.service";
 import {
     MONTH_NAMES,
     SalarySlipService,
 } from "@/services/salary-slip.service";
 import { SalaryService } from "@/services/salary.service";
-import type { IEmployee } from "@/types/employee.types";
-import type { SalaryStatus } from "@/types/salary.types";
+import type { IEmployeeOption } from "@/types/employee.types";
+import type { IncentiveMode, SalaryStatus } from "@/types/salary.types";
+import {
+    computeIncentiveRowsTotal,
+    createEmptyIncentiveRow,
+    IncentiveSection,
+    type IncentiveRowDraft,
+    serializeIncentiveRows,
+} from "./_components/incentive-section";
 import {
     ArrowLeft,
     Banknote,
     Building,
     Calculator,
     Calendar,
+    Check,
+    ChevronsUpDown,
     Loader2,
+    Phone,
     Save,
+    Search,
     Sparkles,
+    X,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+
+const toNum = (v: string | number | undefined): number => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+};
+
+const toInputVal = (v: string | number | undefined | null): string => {
+    const n = Number(v);
+    return Number.isFinite(n) && n !== 0 ? String(n) : "";
+};
 
 export default function CreateSalaryPage() {
     const navigate = useNavigate();
@@ -53,35 +82,57 @@ export default function CreateSalaryPage() {
     const preselectedEmpId = searchParams.get("employeeId") || "";
 
     const now = new Date();
-    const [employees, setEmployees] = useState<IEmployee[]>([]);
+    const [employees, setEmployees] = useState<IEmployeeOption[]>([]);
     const [employeeId, setEmployeeId] = useState<string>(preselectedEmpId);
+    const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
+    const [employeeSearch, setEmployeeSearch] = useState("");
     const [month, setMonth] = useState<number>(now.getMonth() + 1);
     const [year, setYear] = useState<number>(now.getFullYear());
 
+    const selectedEmployee = useMemo(
+        () => employees.find((emp) => emp.id === employeeId),
+        [employees, employeeId]
+    );
+
+    const filteredEmployees = useMemo(() => {
+        const q = employeeSearch.trim().toLowerCase();
+        if (!q) return employees;
+        return employees.filter(
+            (emp) =>
+                emp.name.toLowerCase().includes(q) ||
+                emp.designation?.toLowerCase().includes(q) ||
+                emp.phone?.toLowerCase().includes(q)
+        );
+    }, [employees, employeeSearch]);
+
     // Working Days & Leaves
-    const [totalWorkingDays, setTotalWorkingDays] = useState<number>(30);
-    const [paidLeaves, setPaidLeaves] = useState<number>(0);
-    const [unpaidLeaves, setUnpaidLeaves] = useState<number>(0);
+    const [totalWorkingDays, setTotalWorkingDays] = useState<string>("30");
+    const [paidLeaves, setPaidLeaves] = useState<string>("");
+    const [unpaidLeaves, setUnpaidLeaves] = useState<string>("");
     const [autoLop, setAutoLop] = useState<boolean>(true);
 
     // Indian Earnings
-    const [basicSalary, setBasicSalary] = useState<number>(0);
-    const [hra, setHra] = useState<number>(0);
-    const [da, setDa] = useState<number>(0);
-    const [conveyanceAllowance, setConveyanceAllowance] = useState<number>(0);
-    const [medicalAllowance, setMedicalAllowance] = useState<number>(0);
-    const [specialAllowance, setSpecialAllowance] = useState<number>(0);
-    const [additionalIncentive, setAdditionalIncentive] = useState<number>(0);
+    const [basicSalary, setBasicSalary] = useState<string>("");
+    const [hra, setHra] = useState<string>("");
+    const [da, setDa] = useState<string>("");
+    const [conveyanceAllowance, setConveyanceAllowance] = useState<string>("");
+    const [medicalAllowance, setMedicalAllowance] = useState<string>("");
+    const [specialAllowance, setSpecialAllowance] = useState<string>("");
+    const [incentiveMode, setIncentiveMode] = useState<IncentiveMode>("simple");
+    const [additionalIncentive, setAdditionalIncentive] = useState<string>("");
     const [incentiveNote, setIncentiveNote] = useState<string>("");
+    const [incentiveRows, setIncentiveRows] = useState<IncentiveRowDraft[]>([
+        createEmptyIncentiveRow(),
+    ]);
     const [otherEarnings] = useState<number>(0);
 
     // Indian Deductions
-    const [pfDeduction, setPfDeduction] = useState<number>(0);
-    const [esiDeduction, setEsiDeduction] = useState<number>(0);
-    const [professionalTax, setProfessionalTax] = useState<number>(0);
-    const [tdsDeduction, setTdsDeduction] = useState<number>(0);
-    const [lopDeduction, setLopDeduction] = useState<number>(0);
-    const [otherDeductions, setOtherDeductions] = useState<number>(0);
+    const [pfDeduction, setPfDeduction] = useState<string>("");
+    const [esiDeduction, setEsiDeduction] = useState<string>("");
+    const [professionalTax, setProfessionalTax] = useState<string>("");
+    const [tdsDeduction, setTdsDeduction] = useState<string>("");
+    const [lopDeduction, setLopDeduction] = useState<string>("");
+    const [otherDeductions, setOtherDeductions] = useState<string>("");
 
     // Statutory & Bank
     const [bankName, setBankName] = useState("");
@@ -105,10 +156,9 @@ export default function CreateSalaryPage() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        axiosInstance
-            .get<IEmployee[]>("/employee")
-            .then((r) => setEmployees(r.data || []))
-            .catch(() => {});
+        EmployeeService.getEmployeeOptions()
+            .then((data) => setEmployees(data || []))
+            .catch(() => { });
     }, []);
 
     const loadPreviewForEmployee = useCallback(
@@ -124,19 +174,19 @@ export default function CreateSalaryPage() {
                 });
                 const p = res.preview;
                 const s = res.structure;
-                setPaidLeaves(Number(p.paidLeaves || 0));
-                setUnpaidLeaves(Number(p.unpaidLeaves || 0));
-                setBasicSalary(Number(p.basicSalary || 0));
-                setHra(Number(p.hra || 0));
-                setDa(Number(p.da || 0));
-                setConveyanceAllowance(Number(p.conveyanceAllowance || 0));
-                setMedicalAllowance(Number(p.medicalAllowance || 0));
-                setSpecialAllowance(Number(p.specialAllowance || 0));
-                setPfDeduction(Number(p.pfDeduction || 0));
-                setEsiDeduction(Number(p.esiDeduction || 0));
-                setProfessionalTax(Number(p.professionalTax || 0));
-                setTdsDeduction(Number(p.tdsDeduction || 0));
-                setLopDeduction(Number(p.lopDeduction || 0));
+                setPaidLeaves(toInputVal(p.paidLeaves));
+                setUnpaidLeaves(toInputVal(p.unpaidLeaves));
+                setBasicSalary(toInputVal(p.basicSalary));
+                setHra(toInputVal(p.hra));
+                setDa(toInputVal(p.da));
+                setConveyanceAllowance(toInputVal(p.conveyanceAllowance));
+                setMedicalAllowance(toInputVal(p.medicalAllowance));
+                setSpecialAllowance(toInputVal(p.specialAllowance));
+                setPfDeduction(toInputVal(p.pfDeduction));
+                setEsiDeduction(toInputVal(p.esiDeduction));
+                setProfessionalTax(toInputVal(p.professionalTax));
+                setTdsDeduction(toInputVal(p.tdsDeduction));
+                setLopDeduction(toInputVal(p.lopDeduction));
 
                 setBankName(s?.bankName || "");
                 setAccountNumber(s?.accountNumber || "");
@@ -155,58 +205,72 @@ export default function CreateSalaryPage() {
 
     useEffect(() => {
         if (employeeId) {
-            loadPreviewForEmployee(employeeId, month, year, totalWorkingDays);
+            loadPreviewForEmployee(
+                employeeId,
+                month,
+                year,
+                toNum(totalWorkingDays) || 30
+            );
         }
     }, [employeeId, month, year]);
 
+    const workingDaysNum = toNum(totalWorkingDays);
+    const paidLeavesNum = toNum(paidLeaves);
+    const unpaidLeavesNum = toNum(unpaidLeaves);
+
     const baseFixedGross =
-        Number(basicSalary || 0) +
-        Number(hra || 0) +
-        Number(da || 0) +
-        Number(conveyanceAllowance || 0) +
-        Number(medicalAllowance || 0) +
-        Number(specialAllowance || 0);
+        toNum(basicSalary) +
+        toNum(hra) +
+        toNum(da) +
+        toNum(conveyanceAllowance) +
+        toNum(medicalAllowance) +
+        toNum(specialAllowance);
 
     // Auto-recompute LOP when autoLop is enabled
     useEffect(() => {
         if (autoLop) {
             const calcLop =
-                totalWorkingDays > 0 && unpaidLeaves > 0
+                workingDaysNum > 0 && unpaidLeavesNum > 0
                     ? Math.round(
-                          (baseFixedGross / totalWorkingDays) *
-                              unpaidLeaves *
-                              100
-                      ) / 100
+                        (baseFixedGross / workingDaysNum) *
+                        unpaidLeavesNum *
+                        100
+                    ) / 100
                     : 0;
-            setLopDeduction(calcLop);
+            setLopDeduction(toInputVal(calcLop));
         }
-    }, [autoLop, baseFixedGross, totalWorkingDays, unpaidLeaves]);
+    }, [autoLop, baseFixedGross, workingDaysNum, unpaidLeavesNum]);
 
-    const payableDays = Math.max(0, totalWorkingDays - unpaidLeaves);
-    const daysWorked = Math.max(0, payableDays - paidLeaves);
+    const payableDays = Math.max(0, workingDaysNum - unpaidLeavesNum);
+    const daysWorked = Math.max(0, payableDays - paidLeavesNum);
+    const effectiveIncentive =
+        incentiveMode === "itemized"
+            ? computeIncentiveRowsTotal(incentiveRows)
+            : toNum(additionalIncentive);
     const grossEarnings =
         baseFixedGross +
-        Number(additionalIncentive || 0) +
-        Number(otherEarnings || 0);
+        effectiveIncentive +
+        toNum(otherEarnings);
     const totalDeductions =
-        Number(pfDeduction || 0) +
-        Number(esiDeduction || 0) +
-        Number(professionalTax || 0) +
-        Number(tdsDeduction || 0) +
-        Number(lopDeduction || 0) +
-        Number(otherDeductions || 0);
+        toNum(pfDeduction) +
+        toNum(esiDeduction) +
+        toNum(professionalTax) +
+        toNum(tdsDeduction) +
+        toNum(lopDeduction) +
+        toNum(otherDeductions);
     const netSalary = Math.max(0, grossEarnings - totalDeductions);
 
     const handleAutoFillIndianDefaults = () => {
-        if (!basicSalary || basicSalary <= 0) {
+        const basic = toNum(basicSalary);
+        if (basic <= 0) {
             toast.error("Enter Basic Salary first to auto-calculate HRA & EPF");
             return;
         }
-        setHra(Math.round(basicSalary * 0.4));
-        setConveyanceAllowance(1600);
-        setMedicalAllowance(1250);
-        setPfDeduction(Math.min(1800, Math.round(basicSalary * 0.12)));
-        setProfessionalTax(200);
+        setHra(String(Math.round(basic * 0.4)));
+        setConveyanceAllowance("1600");
+        setMedicalAllowance("1250");
+        setPfDeduction(String(Math.min(1800, Math.round(basic * 0.12))));
+        setProfessionalTax("200");
         toast.success("Filled Indian standard HRA (40%), EPF (12%), and PT (₹200)");
     };
 
@@ -222,26 +286,34 @@ export default function CreateSalaryPage() {
                 employeeId,
                 month,
                 year,
-                totalWorkingDays,
+                totalWorkingDays: workingDaysNum,
                 daysWorked,
-                paidLeaves,
-                unpaidLeaves,
+                paidLeaves: paidLeavesNum,
+                unpaidLeaves: unpaidLeavesNum,
                 payableDays,
-                basicSalary,
-                hra,
-                da,
-                conveyanceAllowance,
-                medicalAllowance,
-                specialAllowance,
-                additionalIncentive,
-                incentiveNote: incentiveNote.trim() || undefined,
+                basicSalary: toNum(basicSalary),
+                hra: toNum(hra),
+                da: toNum(da),
+                conveyanceAllowance: toNum(conveyanceAllowance),
+                medicalAllowance: toNum(medicalAllowance),
+                specialAllowance: toNum(specialAllowance),
+                incentiveMode,
+                additionalIncentive: effectiveIncentive,
+                incentiveNote:
+                    incentiveMode === "simple"
+                        ? incentiveNote.trim() || undefined
+                        : undefined,
+                incentiveItems:
+                    incentiveMode === "itemized"
+                        ? serializeIncentiveRows(incentiveRows)
+                        : null,
                 otherEarnings,
-                pfDeduction,
-                esiDeduction,
-                professionalTax,
-                tdsDeduction,
-                lopDeduction,
-                otherDeductions,
+                pfDeduction: toNum(pfDeduction),
+                esiDeduction: toNum(esiDeduction),
+                professionalTax: toNum(professionalTax),
+                tdsDeduction: toNum(tdsDeduction),
+                lopDeduction: toNum(lopDeduction),
+                otherDeductions: toNum(otherDeductions),
                 status,
                 paymentMethod: paymentMethod || undefined,
                 paymentReference: paymentReference.trim() || undefined,
@@ -329,27 +401,171 @@ export default function CreateSalaryPage() {
                                 <Label className="text-xs font-semibold">
                                     Select Employee *
                                 </Label>
-                                <Select
-                                    value={employeeId}
-                                    onValueChange={setEmployeeId}
+                                <Popover
+                                    open={employeeDropdownOpen}
+                                    onOpenChange={setEmployeeDropdownOpen}
                                 >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Choose employee" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {employees.map((emp) => (
-                                            <SelectItem
-                                                key={emp.id}
-                                                value={emp.id}
-                                            >
-                                                {emp.name}{" "}
-                                                {emp.designation
-                                                    ? `(${emp.designation})`
-                                                    : ""}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={employeeDropdownOpen}
+                                            className="w-full justify-between bg-background h-9 px-3 text-left font-normal border-input hover:bg-accent/50"
+                                        >
+                                            {selectedEmployee ? (
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <Avatar className="h-5 w-5 shrink-0">
+                                                        {selectedEmployee.profilePhoto && (
+                                                            <AvatarImage
+                                                                src={getFileUrl(
+                                                                    selectedEmployee.profilePhoto
+                                                                )}
+                                                                alt={
+                                                                    selectedEmployee.name
+                                                                }
+                                                                className="object-cover"
+                                                            />
+                                                        )}
+                                                        <AvatarFallback className="text-[10px] font-semibold">
+                                                            {getInitials(
+                                                                selectedEmployee.name
+                                                            )}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="truncate text-sm">
+                                                        {selectedEmployee.name}
+                                                        {selectedEmployee.designation
+                                                            ? ` (${selectedEmployee.designation})`
+                                                            : ""}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm">
+                                                    Choose employee
+                                                </span>
+                                            )}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                        className="w-[320px] sm:w-[360px] p-0 shadow-lg"
+                                        align="start"
+                                    >
+                                        <div className="p-2.5 border-b flex items-center gap-2 bg-muted/20">
+                                            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                                            <Input
+                                                placeholder="Search name, designation, or phone..."
+                                                value={employeeSearch}
+                                                onChange={(e) =>
+                                                    setEmployeeSearch(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="h-8 text-xs bg-background border-none shadow-none focus-visible:ring-0"
+                                                autoFocus
+                                            />
+                                            {employeeSearch && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setEmployeeSearch("")
+                                                    }
+                                                    className="text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-64 overflow-y-auto p-1 divide-y divide-border/30">
+                                            {filteredEmployees.length === 0 ? (
+                                                <div className="p-4 text-center text-xs text-muted-foreground">
+                                                    {employeeSearch
+                                                        ? `No employees found matching "${employeeSearch}"`
+                                                        : "No employees available"}
+                                                </div>
+                                            ) : (
+                                                filteredEmployees.map((emp) => {
+                                                    const isSelected =
+                                                        emp.id === employeeId;
+                                                    return (
+                                                        <button
+                                                            key={emp.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setEmployeeId(
+                                                                    emp.id
+                                                                );
+                                                                setEmployeeDropdownOpen(
+                                                                    false
+                                                                );
+                                                                setEmployeeSearch(
+                                                                    ""
+                                                                );
+                                                            }}
+                                                            className={cn(
+                                                                "w-full p-2 rounded-md cursor-pointer text-left transition-colors flex items-center justify-between gap-2.5",
+                                                                isSelected
+                                                                    ? "bg-accent text-accent-foreground"
+                                                                    : "hover:bg-accent/60 text-foreground"
+                                                            )}
+                                                        >
+                                                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                                <Avatar className="h-8 w-8 shrink-0">
+                                                                    {emp.profilePhoto && (
+                                                                        <AvatarImage
+                                                                            src={getFileUrl(
+                                                                                emp.profilePhoto
+                                                                            )}
+                                                                            alt={
+                                                                                emp.name
+                                                                            }
+                                                                            className="object-cover"
+                                                                        />
+                                                                    )}
+                                                                    <AvatarFallback className="text-xs font-semibold">
+                                                                        {getInitials(
+                                                                            emp.name
+                                                                        )}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="text-xs font-semibold truncate">
+                                                                        {
+                                                                            emp.name
+                                                                        }
+                                                                        {emp.designation && (
+                                                                            <span className="font-normal text-muted-foreground ml-1">
+                                                                                (
+                                                                                {
+                                                                                    emp.designation
+                                                                                }
+                                                                                )
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {emp.phone && (
+                                                                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+                                                                            <Phone className="w-3 h-3 shrink-0" />
+                                                                            <span className="truncate">
+                                                                                {
+                                                                                    emp.phone
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {isSelected && (
+                                                                <Check className="w-4 h-4 text-primary shrink-0" />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
 
                             <div className="space-y-1.5">
@@ -428,11 +644,10 @@ export default function CreateSalaryPage() {
                                         step="0.5"
                                         min={1}
                                         max={31}
+                                        placeholder="30"
                                         value={totalWorkingDays}
                                         onChange={(e) =>
-                                            setTotalWorkingDays(
-                                                Number(e.target.value)
-                                            )
+                                            setTotalWorkingDays(e.target.value)
                                         }
                                     />
                                 </div>
@@ -444,11 +659,10 @@ export default function CreateSalaryPage() {
                                         type="number"
                                         step="0.5"
                                         min={0}
+                                        placeholder="0"
                                         value={paidLeaves}
                                         onChange={(e) =>
-                                            setPaidLeaves(
-                                                Number(e.target.value)
-                                            )
+                                            setPaidLeaves(e.target.value)
                                         }
                                     />
                                 </div>
@@ -460,11 +674,10 @@ export default function CreateSalaryPage() {
                                         type="number"
                                         step="0.5"
                                         min={0}
+                                        placeholder="0"
                                         value={unpaidLeaves}
                                         onChange={(e) =>
-                                            setUnpaidLeaves(
-                                                Number(e.target.value)
-                                            )
+                                            setUnpaidLeaves(e.target.value)
                                         }
                                     />
                                 </div>
@@ -540,11 +753,10 @@ export default function CreateSalaryPage() {
                                     <Input
                                         type="number"
                                         min={0}
+                                        placeholder="0"
                                         value={basicSalary}
                                         onChange={(e) =>
-                                            setBasicSalary(
-                                                Number(e.target.value)
-                                            )
+                                            setBasicSalary(e.target.value)
                                         }
                                     />
                                 </div>
@@ -555,10 +767,9 @@ export default function CreateSalaryPage() {
                                     <Input
                                         type="number"
                                         min={0}
+                                        placeholder="0"
                                         value={hra}
-                                        onChange={(e) =>
-                                            setHra(Number(e.target.value))
-                                        }
+                                        onChange={(e) => setHra(e.target.value)}
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -568,10 +779,9 @@ export default function CreateSalaryPage() {
                                     <Input
                                         type="number"
                                         min={0}
+                                        placeholder="0"
                                         value={da}
-                                        onChange={(e) =>
-                                            setDa(Number(e.target.value))
-                                        }
+                                        onChange={(e) => setDa(e.target.value)}
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -581,10 +791,11 @@ export default function CreateSalaryPage() {
                                     <Input
                                         type="number"
                                         min={0}
+                                        placeholder="0"
                                         value={conveyanceAllowance}
                                         onChange={(e) =>
                                             setConveyanceAllowance(
-                                                Number(e.target.value)
+                                                e.target.value
                                             )
                                         }
                                     />
@@ -596,11 +807,10 @@ export default function CreateSalaryPage() {
                                     <Input
                                         type="number"
                                         min={0}
+                                        placeholder="0"
                                         value={medicalAllowance}
                                         onChange={(e) =>
-                                            setMedicalAllowance(
-                                                Number(e.target.value)
-                                            )
+                                            setMedicalAllowance(e.target.value)
                                         }
                                     />
                                 </div>
@@ -611,47 +821,26 @@ export default function CreateSalaryPage() {
                                     <Input
                                         type="number"
                                         min={0}
+                                        placeholder="0"
                                         value={specialAllowance}
                                         onChange={(e) =>
-                                            setSpecialAllowance(
-                                                Number(e.target.value)
-                                            )
+                                            setSpecialAllowance(e.target.value)
                                         }
                                     />
                                 </div>
                             </div>
 
                             {/* Highlighted Additional Incentive Box */}
-                            <div className="p-4 rounded-lg border-2 border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                                        Additional Incentive / Bonus (₹)
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        value={additionalIncentive}
-                                        onChange={(e) =>
-                                            setAdditionalIncentive(
-                                                Number(e.target.value)
-                                            )
-                                        }
-                                        className="border-emerald-300 font-mono font-bold"
-                                    />
-                                </div>
-                                <div className="space-y-1 sm:col-span-2">
-                                    <Label className="text-xs font-semibold">
-                                        Incentive Description / Note (Optional)
-                                    </Label>
-                                    <Input
-                                        placeholder="e.g., Sales Target Achievement / Festival Bonus"
-                                        value={incentiveNote}
-                                        onChange={(e) =>
-                                            setIncentiveNote(e.target.value)
-                                        }
-                                    />
-                                </div>
-                            </div>
+                            <IncentiveSection
+                                mode={incentiveMode}
+                                onModeChange={setIncentiveMode}
+                                simpleAmount={additionalIncentive}
+                                onSimpleAmountChange={setAdditionalIncentive}
+                                simpleNote={incentiveNote}
+                                onSimpleNoteChange={setIncentiveNote}
+                                rows={incentiveRows}
+                                onRowsChange={setIncentiveRows}
+                            />
                         </CardContent>
                     </Card>
 
@@ -670,9 +859,10 @@ export default function CreateSalaryPage() {
                                 <Input
                                     type="number"
                                     min={0}
+                                    placeholder="0"
                                     value={pfDeduction}
                                     onChange={(e) =>
-                                        setPfDeduction(Number(e.target.value))
+                                        setPfDeduction(e.target.value)
                                     }
                                 />
                             </div>
@@ -683,9 +873,10 @@ export default function CreateSalaryPage() {
                                 <Input
                                     type="number"
                                     min={0}
+                                    placeholder="0"
                                     value={esiDeduction}
                                     onChange={(e) =>
-                                        setEsiDeduction(Number(e.target.value))
+                                        setEsiDeduction(e.target.value)
                                     }
                                 />
                             </div>
@@ -696,11 +887,10 @@ export default function CreateSalaryPage() {
                                 <Input
                                     type="number"
                                     min={0}
+                                    placeholder="0"
                                     value={professionalTax}
                                     onChange={(e) =>
-                                        setProfessionalTax(
-                                            Number(e.target.value)
-                                        )
+                                        setProfessionalTax(e.target.value)
                                     }
                                 />
                             </div>
@@ -711,9 +901,10 @@ export default function CreateSalaryPage() {
                                 <Input
                                     type="number"
                                     min={0}
+                                    placeholder="0"
                                     value={tdsDeduction}
                                     onChange={(e) =>
-                                        setTdsDeduction(Number(e.target.value))
+                                        setTdsDeduction(e.target.value)
                                     }
                                 />
                             </div>
@@ -724,10 +915,11 @@ export default function CreateSalaryPage() {
                                 <Input
                                     type="number"
                                     min={0}
+                                    placeholder="0"
                                     value={lopDeduction}
                                     onChange={(e) => {
                                         setAutoLop(false);
-                                        setLopDeduction(Number(e.target.value));
+                                        setLopDeduction(e.target.value);
                                     }}
                                 />
                             </div>
@@ -738,11 +930,10 @@ export default function CreateSalaryPage() {
                                 <Input
                                     type="number"
                                     min={0}
+                                    placeholder="0"
                                     value={otherDeductions}
                                     onChange={(e) =>
-                                        setOtherDeductions(
-                                            Number(e.target.value)
-                                        )
+                                        setOtherDeductions(e.target.value)
                                     }
                                 />
                             </div>
@@ -849,14 +1040,14 @@ export default function CreateSalaryPage() {
 
                 {/* Right Sticky Summary Column */}
                 <div className="space-y-6 lg:sticky lg:top-6">
-                    <Card className="border-2 border-primary/30 shadow-sm">
-                        <CardHeader className="pb-3 bg-primary/5 border-b">
+                    <Card className="border-2 border-primary/30 shadow-sm p-0">
+                        <CardHeader className="pt-5 pb-3 bg-primary/5 border-b">
                             <CardTitle className="text-base font-bold">
                                 Payroll Calculation Summary
                             </CardTitle>
                             <CardDescription className="text-xs">
                                 {MONTH_NAMES[(month || 1) - 1]} {year} •{" "}
-                                {payableDays}/{totalWorkingDays} Payable Days
+                                {payableDays}/{workingDaysNum} Payable Days
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="p-5 space-y-4">
@@ -870,9 +1061,15 @@ export default function CreateSalaryPage() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-emerald-600">
-                                    <span>+ Additional Incentive:</span>
+                                    <span>
+                                        + Additional Incentive
+                                        {incentiveMode === "itemized"
+                                            ? " (Table)"
+                                            : ""}
+                                        :
+                                    </span>
                                     <span className="font-mono font-semibold">
-                                        {fmt(additionalIncentive)}
+                                        {fmt(effectiveIncentive)}
                                     </span>
                                 </div>
                                 <div className="flex justify-between border-t pt-2 font-bold text-sm">

@@ -292,6 +292,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ]
                 : []),
             {
+                name: "Expenses",
+                url: "/expenses",
+                icon: Wallet,
+            },
+            {
                 name: "Invoice Settings",
                 url: "/settings/invoice",
                 icon: Receipt,

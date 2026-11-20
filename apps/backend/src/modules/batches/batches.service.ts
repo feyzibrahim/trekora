@@ -130,21 +130,46 @@ export class BatchesService {
     page?: number,
     limit?: number,
     search?: string,
+    packageId?: string,
+    lite = false,
   ): Promise<any> {
     const query = this.batchRepo
       .createQueryBuilder('batch')
-      .leftJoinAndSelect('batch.package', 'package')
-      .leftJoinAndSelect('package.packageTiers', 'packageTiers')
-      .leftJoinAndSelect('batch.batchTiers', 'batchTiers')
-      .leftJoinAndSelect('batch.coordinators', 'coordinators')
       .where('batch.organizationId = :organizationId', { organizationId });
+
+    if (lite) {
+      query
+        .leftJoin('batch.package', 'package')
+        .select([
+          'batch.id',
+          'batch.startDate',
+          'batch.endDate',
+          'batch.status',
+          'batch.packageId',
+          'package.id',
+          'package.name',
+        ]);
+    } else {
+      query
+        .leftJoinAndSelect('batch.package', 'package')
+        .leftJoinAndSelect('package.packageTiers', 'packageTiers')
+        .leftJoinAndSelect('batch.batchTiers', 'batchTiers')
+        .leftJoinAndSelect('batch.coordinators', 'coordinators');
+    }
 
     if (status) {
       query.andWhere('batch.status = :status', { status });
     }
 
-    if (search) {
-      query.andWhere('package.name ILIKE :search', { search: `%${search}%` });
+    if (packageId) {
+      query.andWhere('batch.packageId = :packageId', { packageId });
+    }
+
+    if (search && search.trim()) {
+      query.andWhere(
+        '(package.name ILIKE :search OR CAST(batch.startDate AS TEXT) ILIKE :search OR CAST(batch.status AS TEXT) ILIKE :search)',
+        { search: `%${search.trim()}%` },
+      );
     }
 
     query.orderBy('batch.startDate', 'ASC');

@@ -72,6 +72,22 @@ export class EmployeeController {
     return this.employeeService.findAll(req.user.organizationId, showArchived);
   }
 
+  // Get lightweight employee list for dropdowns/selectors
+  @Get('options')
+  @RequirePermission('employee', 'read')
+  async findOptions(
+    @Request() req: ApiRequestJWT,
+    @Query('archived') archived?: string,
+  ): Promise<
+    Pick<Employee, 'id' | 'name' | 'designation' | 'phone' | 'profilePhoto'>[]
+  > {
+    const showArchived = archived === 'true';
+    return this.employeeService.findOptions(
+      req.user.organizationId,
+      showArchived,
+    );
+  }
+
   @Get('profile')
   async findProfile(@Request() req: ApiRequestJWT): Promise<Employee | null> {
     return this.employeeService.findProfile(req.user.userId, req.user.organizationId);

@@ -248,6 +248,69 @@ export class SalarySlipService {
             }
 
             if (sectionId === "earningsDeductions") {
+                const escapeHtml = (str?: string | null) =>
+                    String(str ?? "")
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;");
+                const incentiveItems =
+                    salary.incentiveMode === "itemized" &&
+                    Array.isArray(salary.incentiveItems)
+                        ? salary.incentiveItems
+                        : [];
+                const incentiveTableTotal = incentiveItems.reduce(
+                    (sum, item) =>
+                        sum +
+                        Number(
+                            item.total ??
+                                Number(item.amount || 0) * Number(item.count || 0)
+                        ),
+                    0
+                );
+
+                const incentiveBreakdownHTML =
+                    incentiveItems.length > 0
+                        ? `
+                <div class="incentive-breakdown">
+                  <div class="incentive-breakdown-title">Incentive Breakdown</div>
+                  <table class="incentive-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 34%;">Name</th>
+                        <th style="width: 24%;">Type</th>
+                        <th style="width: 15%; text-align: right;">Amount (₹)</th>
+                        <th style="width: 10%; text-align: right;">Count</th>
+                        <th style="width: 17%; text-align: right;">Total (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${incentiveItems
+                          .map((item) => {
+                              const rowTotal = Number(
+                                  item.total ??
+                                      Number(item.amount || 0) *
+                                          Number(item.count || 0)
+                              );
+                              return `
+                      <tr>
+                        <td style="font-weight: 500;">${escapeHtml(item.name) || "—"}</td>
+                        <td style="color: #4b5563;">${escapeHtml(item.type) || "—"}</td>
+                        <td class="amt">${this.formatCurrency(item.amount)}</td>
+                        <td class="amt">${Number(item.count || 0)}</td>
+                        <td class="amt" style="color: #059669;">${this.formatCurrency(rowTotal)}</td>
+                      </tr>`;
+                          })
+                          .join("")}
+                      <tr class="incentive-total-row">
+                        <td colspan="4" style="text-align: right;">Total Incentives</td>
+                        <td class="amt" style="color: #065f46;">${this.formatCurrency(incentiveTableTotal)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>`
+                        : "";
+
                 return `
                 <table class="salary-table">
                   <thead>
@@ -297,7 +360,13 @@ export class SalarySlipService {
                     </tr>
                     <tr>
                       <td style="color: #059669; font-weight: 600;">
-                        Additional Incentive ${salary.incentiveNote ? `<span style="font-size: 11px; color: #6b7280; font-weight: 400;">(${salary.incentiveNote})</span>` : ""}
+                        Additional Incentive ${
+                            incentiveItems.length > 0
+                                ? `<span style="font-size: 11px; color: #6b7280; font-weight: 400;">(Itemized — ${incentiveItems.length} ${incentiveItems.length === 1 ? "item" : "items"})</span>`
+                                : salary.incentiveNote
+                                  ? `<span style="font-size: 11px; color: #6b7280; font-weight: 400;">(${escapeHtml(salary.incentiveNote)})</span>`
+                                  : ""
+                        }
                       </td>
                       <td class="amt" style="color: #059669;">${this.formatCurrency(salary.additionalIncentive)}</td>
                       <td></td>
@@ -322,6 +391,7 @@ export class SalarySlipService {
                     </tr>
                   </tbody>
                 </table>
+                ${incentiveBreakdownHTML}
                 `;
             }
 
@@ -524,6 +594,44 @@ export class SalarySlipService {
           .totals-row {
             background: #f3f4f6 !important;
             font-weight: 800;
+          }
+          .incentive-breakdown {
+            margin-bottom: 18px;
+          }
+          .incentive-breakdown-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #059669;
+            margin-bottom: 6px;
+          }
+          .incentive-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #d1fae5;
+          }
+          .incentive-table th {
+            background: #ecfdf5;
+            color: #065f46;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #d1fae5;
+          }
+          .incentive-table td {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .incentive-table tr:nth-child(even) {
+            background: #f9fafb;
+          }
+          .incentive-total-row {
+            background: #ecfdf5 !important;
+            font-weight: 800;
+            color: #065f46;
           }
           .net-pay-banner {
             display: flex;

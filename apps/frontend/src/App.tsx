@@ -77,6 +77,10 @@ import AgentsPage from "./pages/user/agents/agents.page";
 import CreateAgentPage from "./pages/user/agents/create-agent.page";
 import EditAgentPage from "./pages/user/agents/edit-agent.page";
 import ViewAgentPage from "./pages/user/agents/view-agent.page";
+import ExpensesPage from "./pages/user/expenses/expenses.page";
+import CreateExpensePage from "./pages/user/expenses/create-expense.page";
+import EditExpensePage from "./pages/user/expenses/edit-expense.page";
+import ViewExpensePage from "./pages/user/expenses/view-expense.page";
 
 function AuthenticatedApp() {
     // Add your dashboard and other protected routes here
@@ -162,6 +166,10 @@ function AuthenticatedApp() {
                         path="/payments/:id/edit"
                         element={<EditPaymentPage />}
                     />
+                    <Route path="/expenses" element={<ExpensesPage />} />
+                    <Route path="/expenses/create" element={<CreateExpensePage />} />
+                    <Route path="/expenses/edit/:id" element={<EditExpensePage />} />
+                    <Route path="/expenses/:id" element={<ViewExpensePage />} />
                     <Route path="/import" element={<ImportPage />} />
                     <Route path="/agents" element={<AgentsPage />} />
                     <Route path="/agents/create" element={<CreateAgentPage />} />

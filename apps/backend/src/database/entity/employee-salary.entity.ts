@@ -17,6 +17,16 @@ export enum SalaryStatus {
   PAID = 'paid',
 }
 
+export type IncentiveMode = 'simple' | 'itemized';
+
+export interface SalaryIncentiveItem {
+  name: string;
+  type: string;
+  amount: number;
+  count: number;
+  total: number;
+}
+
 @Entity('employee_salary')
 export class EmployeeSalary {
   @PrimaryGeneratedColumn('uuid', { name: 'id' })
@@ -85,6 +95,12 @@ export class EmployeeSalary {
 
   @Column({ type: 'varchar', nullable: true, name: 'incentive_note' })
   incentiveNote?: string;
+
+  @Column({ type: 'varchar', default: 'simple', name: 'incentive_mode' })
+  incentiveMode: IncentiveMode;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'incentive_items' })
+  incentiveItems?: SalaryIncentiveItem[] | null;
 
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0, name: 'other_earnings' })
   otherEarnings: number;

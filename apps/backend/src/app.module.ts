@@ -41,6 +41,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { ApprovalModule } from './modules/approval/approval.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { SalaryModule } from './modules/salary/salary.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { SalaryModule } from './modules/salary/salary.module';
     ApprovalModule,
     LeaveModule,
     SalaryModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -85,6 +85,10 @@ When creating or modifying features inside `apps/frontend/src/pages/user`, **STR
 
 All new pages must adhere to standardized architecture blueprints:
 
+- **Full-Width Page Layout (No Centered Narrow Containers)**:
+  - All authenticated pages (list, create, edit, and view/details pages) **must** span the full available width of the main content area (e.g., `<div className="p-6 space-y-6">`).
+  - **Do NOT** center pages or add artificial horizontal side margins/padding using `max-w-4xl mx-auto`, `max-w-5xl mx-auto`, `max-w-7xl mx-auto`, or similar narrow-container wrappers.
+
 #### A. List Pages (`[feature-plural].page.tsx`)
 - Standard top header with page title, descriptive subtitle, search bar, filter controls, and a primary CTA (e.g., "+ Add [Item]").
 - Data display using `@tanstack/react-table` or responsive table.
@@ -125,6 +129,7 @@ apps/backend/src/modules/[feature]/
 ```
 
 ### 3.2 Backend Conventions
+- **Auth & Permission Guard Imports**: Any NestJS feature module whose controller uses `AuthGuard` or `PermissionGuard` **must** import `JwtModule.register({})`, `AuthModule`, and `PermissionModule` in its `@Module({ imports: [...] })` array. Omitting `JwtModule.register({})` or `AuthModule` causes an `UnknownDependenciesException` because `AuthGuard` requires `JwtService` in the module context.
 - **Audit Columns**: Core entities should include standard timestamps (`createdAt`, `updatedAt`) and track user actions (`createdBy`, `updatedBy`, `organizationId`).
 - **Activity Logging**: Mutation operations (status changes, payments, cancellations, transfers) must record an audit entry in the activity log table.
 - **Transactions**: Multi-table operations (e.g., booking creation with customers and payments) must use TypeORM QueryRunner or DataSource transactions.
@@ -150,3 +155,6 @@ apps/backend/src/modules/[feature]/
      - Combined Date & Time: `format(date, "MMM d, yyyy • h:mm a")` (e.g., `Aug 27, 2026 • 1:50 PM`)
      - Time only: `format(date, "h:mm a")` (e.g., `1:50 PM`)
      - When using native `toLocaleTimeString`: always include `{ hour: 'numeric', minute: '2-digit', hour12: true }`.
+7. **Standard Date Picker Component (`TypableDatePicker`)**:
+   - Always use `<TypableDatePicker />` from `@/components/ui/typable-date-picker` for all date inputs in forms and filters.
+   - Do **NOT** use native `<Input type="date" />` or `<input type="date" />` elements. `TypableDatePicker` handles `DD-MM-YYYY` display/typing, outputs ISO `YYYY-MM-DD` strings, and supports `min`, `max`, and `disabledDates` with the shared Calendar popover.
