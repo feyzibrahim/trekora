@@ -10,6 +10,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -47,7 +56,9 @@ import {
     Receipt,
     Search,
     Send,
+    SlidersHorizontal,
     Wallet,
+    X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -124,6 +135,7 @@ export default function ExpensesPage() {
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [mineOnly, setMineOnly] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
 
     // Filter option lists
     const [packages, setPackages] = useState<IPackageOption[]>([]);
@@ -220,16 +232,19 @@ export default function ExpensesPage() {
         fetchExpenses();
     }, [fetchExpenses]);
 
+    const activeFilterCount = useMemo(() => {
+        let count = 0;
+        if (status !== "all") count++;
+        if (category !== "all") count++;
+        if (paymentType !== "all") count++;
+        if (packageId !== "all") count++;
+        if (batchId !== "all") count++;
+        if (dateFrom || dateTo) count++;
+        return count;
+    }, [status, category, paymentType, packageId, batchId, dateFrom, dateTo]);
+
     const hasActiveFilters =
-        !!searchInput ||
-        status !== "all" ||
-        category !== "all" ||
-        paymentType !== "all" ||
-        packageId !== "all" ||
-        batchId !== "all" ||
-        !!dateFrom ||
-        !!dateTo ||
-        mineOnly;
+        !!searchInput || activeFilterCount > 0 || mineOnly;
 
     const clearFilters = () => {
         setSearchInput("");
@@ -349,272 +364,496 @@ export default function ExpensesPage() {
                 </Card>
             </div>
 
-            {/* Filters Bar */}
-            <Card className="border-border/80 shadow-xs">
-                <CardContent className="p-4 space-y-4">
-                    {/* Row 1: Search + Quick Controls */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div className="relative flex-1">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by expense #, title, vendor, transfer account, or remarks..."
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                className="pl-9 w-full"
-                            />
-                        </div>
+            {/* Compact Search & Filter Toolbar */}
+            <div className="space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="relative flex-1">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by expense #, title, vendor, transfer account, or remarks..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="pl-9 w-full"
+                        />
+                    </div>
 
-                        <div className="flex items-center gap-3 shrink-0">
-                            {canReadAll && (
-                                <label className="inline-flex items-center gap-2 h-9 px-3 rounded-md border bg-muted/30 text-xs font-medium cursor-pointer select-none">
-                                    <Switch
-                                        checked={mineOnly}
-                                        onCheckedChange={(v) => {
-                                            setMineOnly(v);
-                                            setPage(1);
-                                        }}
-                                    />
-                                    <span>My Requests</span>
-                                </label>
-                            )}
+                    <div className="flex items-center gap-2.5 shrink-0">
+                        {canReadAll && (
+                            <label className="inline-flex items-center gap-2 h-9 px-3 rounded-md border bg-card text-xs font-medium cursor-pointer select-none">
+                                <Switch
+                                    checked={mineOnly}
+                                    onCheckedChange={(v) => {
+                                        setMineOnly(v);
+                                        setPage(1);
+                                    }}
+                                />
+                                <span>My Requests</span>
+                            </label>
+                        )}
 
-                            {hasActiveFilters && (
+                        <Sheet
+                            open={filtersOpen}
+                            onOpenChange={setFiltersOpen}
+                        >
+                            <SheetTrigger asChild>
                                 <Button
-                                    variant="outline"
+                                    variant={
+                                        activeFilterCount > 0
+                                            ? "default"
+                                            : "outline"
+                                    }
                                     size="sm"
-                                    onClick={clearFilters}
-                                    className="h-9 text-xs"
+                                    className="h-9 gap-2"
                                 >
-                                    <FilterX className="w-3.5 h-3.5 mr-1.5" />
-                                    Reset Filters
+                                    <SlidersHorizontal className="w-4 h-4" />
+                                    <span>Filters</span>
+                                    {activeFilterCount > 0 && (
+                                        <Badge
+                                            variant="secondary"
+                                            className="h-5 min-w-5 px-1.5 text-[11px] font-mono rounded-full"
+                                        >
+                                            {activeFilterCount}
+                                        </Badge>
+                                    )}
                                 </Button>
-                            )}
-                        </div>
+                            </SheetTrigger>
+                            <SheetContent className="w-full sm:max-w-md flex flex-col p-0">
+                                <SheetHeader className="p-6 pb-4 border-b">
+                                    <SheetTitle className="flex items-center gap-2">
+                                        <SlidersHorizontal className="w-4 h-4 text-primary" />
+                                        Filter Expenses
+                                    </SheetTitle>
+                                    <SheetDescription>
+                                        Narrow expenses by status, category,
+                                        payment stage, package, batch, or date
+                                        range.
+                                    </SheetDescription>
+                                </SheetHeader>
+
+                                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground block">
+                                            Status
+                                        </label>
+                                        <Select
+                                            value={status}
+                                            onValueChange={(v) => {
+                                                setStatus(
+                                                    v as ExpenseStatus | "all",
+                                                );
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="All Statuses" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    All Statuses
+                                                </SelectItem>
+                                                {(
+                                                    Object.entries(
+                                                        EXPENSE_STATUS_CONFIG,
+                                                    ) as [
+                                                        ExpenseStatus,
+                                                        { label: string },
+                                                    ][]
+                                                ).map(([val, cfg]) => (
+                                                    <SelectItem
+                                                        key={val}
+                                                        value={val}
+                                                    >
+                                                        {cfg.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-muted-foreground block">
+                                                Category
+                                            </label>
+                                            <Select
+                                                value={category}
+                                                onValueChange={(v) => {
+                                                    setCategory(
+                                                        v as
+                                                            | ExpenseCategory
+                                                            | "all",
+                                                    );
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="All Categories" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">
+                                                        All Categories
+                                                    </SelectItem>
+                                                    {(
+                                                        Object.entries(
+                                                            EXPENSE_CATEGORY_LABELS,
+                                                        ) as [
+                                                            ExpenseCategory,
+                                                            string,
+                                                        ][]
+                                                    ).map(([val, label]) => (
+                                                        <SelectItem
+                                                            key={val}
+                                                            value={val}
+                                                        >
+                                                            {label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-muted-foreground block">
+                                                Payment Type
+                                            </label>
+                                            <Select
+                                                value={paymentType}
+                                                onValueChange={(v) => {
+                                                    setPaymentType(
+                                                        v as
+                                                            | ExpensePaymentType
+                                                            | "all",
+                                                    );
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="All Types" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">
+                                                        All Payment Types
+                                                    </SelectItem>
+                                                    {(
+                                                        Object.entries(
+                                                            EXPENSE_PAYMENT_TYPE_LABELS,
+                                                        ) as [
+                                                            ExpensePaymentType,
+                                                            string,
+                                                        ][]
+                                                    ).map(([val, label]) => (
+                                                        <SelectItem
+                                                            key={val}
+                                                            value={val}
+                                                        >
+                                                            {label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground block">
+                                            Package
+                                        </label>
+                                        <Select
+                                            value={packageId}
+                                            onValueChange={(v) => {
+                                                setPackageId(v);
+                                                setBatchId("all");
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="All Packages" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    All Packages
+                                                </SelectItem>
+                                                {packages.map((p) => (
+                                                    <SelectItem
+                                                        key={p.id}
+                                                        value={p.id}
+                                                    >
+                                                        {p.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground block">
+                                            Batch
+                                        </label>
+                                        <Select
+                                            value={batchId}
+                                            onValueChange={(v) => {
+                                                setBatchId(v);
+                                                setPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="All Batches" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">
+                                                    All Batches
+                                                </SelectItem>
+                                                {filteredBatches.map((b) => (
+                                                    <SelectItem
+                                                        key={b.id}
+                                                        value={b.id}
+                                                    >
+                                                        {b.package?.name ||
+                                                            "Batch"}{" "}
+                                                        (
+                                                        {format(
+                                                            new Date(
+                                                                b.startDate,
+                                                            ),
+                                                            "MMM d, yy",
+                                                        )}
+                                                        )
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="pt-3 border-t space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-muted-foreground block">
+                                                Filter Date By
+                                            </label>
+                                            <Select
+                                                value={dateField}
+                                                onValueChange={(v) => {
+                                                    setDateField(
+                                                        v as
+                                                            | "transferDate"
+                                                            | "createdAt",
+                                                    );
+                                                    setPage(1);
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="transferDate">
+                                                        Transfer Date
+                                                    </SelectItem>
+                                                    <SelectItem value="createdAt">
+                                                        Request Date
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-medium text-muted-foreground block">
+                                                    From
+                                                </label>
+                                                <Input
+                                                    type="date"
+                                                    value={dateFrom}
+                                                    onChange={(e) => {
+                                                        setDateFrom(
+                                                            e.target.value,
+                                                        );
+                                                        setPage(1);
+                                                    }}
+                                                    className="w-full"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-medium text-muted-foreground block">
+                                                    To
+                                                </label>
+                                                <Input
+                                                    type="date"
+                                                    value={dateTo}
+                                                    onChange={(e) => {
+                                                        setDateTo(
+                                                            e.target.value,
+                                                        );
+                                                        setPage(1);
+                                                    }}
+                                                    className="w-full"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <SheetFooter className="p-4 border-t flex-row items-center justify-between gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={clearFilters}
+                                        disabled={!hasActiveFilters}
+                                    >
+                                        <FilterX className="w-3.5 h-3.5 mr-1.5" />
+                                        Clear All
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setFiltersOpen(false)}
+                                    >
+                                        Done
+                                    </Button>
+                                </SheetFooter>
+                            </SheetContent>
+                        </Sheet>
+
+                        {hasActiveFilters && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearFilters}
+                                className="h-9 text-xs text-muted-foreground"
+                            >
+                                <FilterX className="w-3.5 h-3.5 mr-1" />
+                                Clear
+                            </Button>
+                        )}
                     </div>
+                </div>
 
-                    {/* Row 2: Structured Labeled Filters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-3 border-t border-border/60">
-                        <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground block">
-                                Status
-                            </label>
-                            <Select
-                                value={status}
-                                onValueChange={(v) => {
-                                    setStatus(v as ExpenseStatus | "all");
-                                    setPage(1);
-                                }}
+                {/* Active Filter Chips */}
+                {activeFilterCount > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {status !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="All Statuses" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        All Statuses
-                                    </SelectItem>
-                                    {(
-                                        Object.entries(EXPENSE_STATUS_CONFIG) as [
-                                            ExpenseStatus,
-                                            { label: string },
-                                        ][]
-                                    ).map(([val, cfg]) => (
-                                        <SelectItem key={val} value={val}>
-                                            {cfg.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground block">
-                                Category
-                            </label>
-                            <Select
-                                value={category}
-                                onValueChange={(v) => {
-                                    setCategory(v as ExpenseCategory | "all");
-                                    setPage(1);
-                                }}
+                                Status: {EXPENSE_STATUS_CONFIG[status].label}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStatus("all");
+                                        setPage(1);
+                                    }}
+                                    className="hover:text-foreground text-muted-foreground"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </Badge>
+                        )}
+                        {category !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="All Categories" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        All Categories
-                                    </SelectItem>
-                                    {(
-                                        Object.entries(EXPENSE_CATEGORY_LABELS) as [
-                                            ExpenseCategory,
-                                            string,
-                                        ][]
-                                    ).map(([val, label]) => (
-                                        <SelectItem key={val} value={val}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground block">
-                                Payment Type
-                            </label>
-                            <Select
-                                value={paymentType}
-                                onValueChange={(v) => {
-                                    setPaymentType(v as ExpensePaymentType | "all");
-                                    setPage(1);
-                                }}
+                                Category: {EXPENSE_CATEGORY_LABELS[category]}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setCategory("all");
+                                        setPage(1);
+                                    }}
+                                    className="hover:text-foreground text-muted-foreground"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </Badge>
+                        )}
+                        {paymentType !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="All Types" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        All Payment Types
-                                    </SelectItem>
-                                    {(
-                                        Object.entries(
-                                            EXPENSE_PAYMENT_TYPE_LABELS,
-                                        ) as [ExpensePaymentType, string][]
-                                    ).map(([val, label]) => (
-                                        <SelectItem key={val} value={val}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground block">
-                                Package
-                            </label>
-                            <Select
-                                value={packageId}
-                                onValueChange={(v) => {
-                                    setPackageId(v);
-                                    setBatchId("all");
-                                    setPage(1);
-                                }}
+                                Stage: {EXPENSE_PAYMENT_TYPE_LABELS[paymentType]}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPaymentType("all");
+                                        setPage(1);
+                                    }}
+                                    className="hover:text-foreground text-muted-foreground"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </Badge>
+                        )}
+                        {packageId !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="All Packages" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">
-                                        All Packages
-                                    </SelectItem>
-                                    {packages.map((p) => (
-                                        <SelectItem key={p.id} value={p.id}>
-                                            {p.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground block">
-                                Batch
-                            </label>
-                            <Select
-                                value={batchId}
-                                onValueChange={(v) => {
-                                    setBatchId(v);
-                                    setPage(1);
-                                }}
+                                Package:{" "}
+                                {packages.find((p) => p.id === packageId)
+                                    ?.name || "Selected"}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPackageId("all");
+                                        setBatchId("all");
+                                        setPage(1);
+                                    }}
+                                    className="hover:text-foreground text-muted-foreground"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </Badge>
+                        )}
+                        {batchId !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="All Batches" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Batches</SelectItem>
-                                    {filteredBatches.map((b) => (
-                                        <SelectItem key={b.id} value={b.id}>
-                                            {b.package?.name || "Batch"} (
-                                            {format(
-                                                new Date(b.startDate),
-                                                "MMM d, yy",
-                                            )}
-                                            )
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="lg:col-span-2 space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground block">
-                                Date Field
-                            </label>
-                            <Select
-                                value={dateField}
-                                onValueChange={(v) => {
-                                    setDateField(
-                                        v as "transferDate" | "createdAt",
+                                Batch:{" "}
+                                {(() => {
+                                    const b = batches.find(
+                                        (item) => item.id === batchId,
                                     );
-                                    setPage(1);
-                                }}
+                                    return b
+                                        ? `${b.package?.name || "Batch"} (${format(new Date(b.startDate), "MMM d")})`
+                                        : "Selected";
+                                })()}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setBatchId("all");
+                                        setPage(1);
+                                    }}
+                                    className="hover:text-foreground text-muted-foreground"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </Badge>
+                        )}
+                        {(dateFrom || dateTo) && (
+                            <Badge
+                                variant="secondary"
+                                className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="transferDate">
-                                        Transfer Date
-                                    </SelectItem>
-                                    <SelectItem value="createdAt">
-                                        Request Date
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    {/* Row 3: Date Range */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
-                        <span className="text-xs font-medium text-muted-foreground shrink-0">
-                            {dateField === "transferDate"
-                                ? "Transfer Date Range:"
-                                : "Request Date Range:"}
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:max-w-md w-full">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground w-10 shrink-0">
-                                    From
-                                </span>
-                                <Input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(e) => {
-                                        setDateFrom(e.target.value);
+                                {dateField === "transferDate"
+                                    ? "Transfer"
+                                    : "Requested"}
+                                : {dateFrom || "…"} → {dateTo || "…"}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDateFrom("");
+                                        setDateTo("");
                                         setPage(1);
                                     }}
-                                    className="w-full"
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground w-10 shrink-0 sm:w-6">
-                                    To
-                                </span>
-                                <Input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(e) => {
-                                        setDateTo(e.target.value);
-                                        setPage(1);
-                                    }}
-                                    className="w-full"
-                                />
-                            </div>
-                        </div>
+                                    className="hover:text-foreground text-muted-foreground"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </Badge>
+                        )}
                     </div>
-                </CardContent>
-            </Card>
+                )}
+            </div>
 
             {/* Expenses Table */}
             <Card className="border-border/80 shadow-xs overflow-hidden">
