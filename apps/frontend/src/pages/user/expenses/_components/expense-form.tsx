@@ -17,10 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TypableDatePicker } from "@/components/ui/typable-date-picker";
-import axiosInstance from "@/lib/axios";
 import { getFileUrl } from "@/lib/utils";
 import ExpenseService from "@/services/expense.service";
-import type { IBatches } from "@/types/batches.types";
 import {
     EXPENSE_CATEGORY_LABELS,
     EXPENSE_PAYMENT_MODE_LABELS,
@@ -32,12 +30,12 @@ import {
     type IBatchExpense,
 } from "@/types/expense.types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
 import { FileText, Loader2, Trash2, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { BatchCombobox } from "./batch-combobox";
 
 function getTodayString(): string {
     const d = new Date();
@@ -110,8 +108,6 @@ export function ExpenseForm({
     onCancel,
     submitting = false,
 }: ExpenseFormProps) {
-    const [batches, setBatches] = useState<IBatches[]>([]);
-    const [loadingBatches, setLoadingBatches] = useState(true);
     const [billAttachments, setBillAttachments] = useState<string[]>(
         initialData?.billAttachments || [],
     );
@@ -144,26 +140,6 @@ export function ExpenseForm({
             remarks: initialData?.remarks || "",
         },
     });
-
-    useEffect(() => {
-        const fetchBatches = async () => {
-            setLoadingBatches(true);
-            try {
-                const res = await axiosInstance.get("/batches", {
-                    params: { page: 1, limit: 200 },
-                });
-                const list = Array.isArray(res.data)
-                    ? res.data
-                    : res.data?.data || [];
-                setBatches(list);
-            } catch {
-                toast.error("Failed to load batches");
-            } finally {
-                setLoadingBatches(false);
-            }
-        };
-        fetchBatches();
-    }, []);
 
     const handleFileUpload = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -219,43 +195,12 @@ export function ExpenseForm({
                                 control={control}
                                 name="batchId"
                                 render={({ field }) => (
-                                    <Select
+                                    <BatchCombobox
                                         value={field.value}
-                                        onValueChange={field.onChange}
-                                        disabled={loadingBatches}
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue
-                                                placeholder={
-                                                    loadingBatches
-                                                        ? "Loading batches..."
-                                                        : "Select a batch"
-                                                }
-                                            />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {batches.map((b) => (
-                                                <SelectItem
-                                                    key={b.id}
-                                                    value={b.id}
-                                                >
-                                                    {b.package?.name ||
-                                                        "Package"}{" "}
-                                                    •{" "}
-                                                    {format(
-                                                        new Date(b.startDate),
-                                                        "MMM d, yyyy",
-                                                    )}{" "}
-                                                    –{" "}
-                                                    {format(
-                                                        new Date(b.endDate),
-                                                        "MMM d, yyyy",
-                                                    )}{" "}
-                                                    ({b.status})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        onChange={field.onChange}
+                                        initialBatch={initialData?.batch}
+                                        placeholder="Search and select a trip batch..."
+                                    />
                                 )}
                             />
                             {errors.batchId && (

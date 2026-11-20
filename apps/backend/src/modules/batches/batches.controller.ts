@@ -39,6 +39,8 @@ export class BatchesController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
+    @Query('packageId') packageId?: string,
+    @Query('lite') lite?: string,
   ) {
     return this.batchService.findAll(
       req.user.organizationId,
@@ -46,6 +48,8 @@ export class BatchesController {
       page ? Number(page) : undefined,
       limit ? Number(limit) : undefined,
       search,
+      packageId,
+      lite === 'true',
     );
   }
 

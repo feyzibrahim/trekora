@@ -33,7 +33,6 @@ import {
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import ExpenseService from "@/services/expense.service";
-import type { IBatches } from "@/types/batches.types";
 import {
     EXPENSE_CATEGORY_LABELS,
     EXPENSE_PAYMENT_TYPE_LABELS,
@@ -68,6 +67,7 @@ import {
     ApproveExpenseDialog,
     MarkSentExpenseDialog,
 } from "./_components/expense-action-dialogs";
+import { BatchCombobox, type BatchOption } from "./_components/batch-combobox";
 
 interface IPackageOption {
     id: string;
@@ -140,7 +140,8 @@ export default function ExpensesPage() {
 
     // Filter option lists
     const [packages, setPackages] = useState<IPackageOption[]>([]);
-    const [batches, setBatches] = useState<IBatches[]>([]);
+    const [selectedBatchMeta, setSelectedBatchMeta] =
+        useState<BatchOption | null>(null);
 
     // Quick action dialogs
     const [approveTarget, setApproveTarget] = useState<IBatchExpense | null>(
@@ -157,35 +158,21 @@ export default function ExpensesPage() {
     }, [searchInput]);
 
     useEffect(() => {
-        const loadFilterOptions = async () => {
+        const loadPackages = async () => {
             try {
-                const [pkgRes, batchRes] = await Promise.all([
-                    axiosInstance.get("/packages", {
-                        params: { page: 1, limit: 200 },
-                    }),
-                    axiosInstance.get("/batches", {
-                        params: { page: 1, limit: 200 },
-                    }),
-                ]);
+                const pkgRes = await axiosInstance.get("/packages", {
+                    params: { page: 1, limit: 200 },
+                });
                 const pkgList = Array.isArray(pkgRes.data)
                     ? pkgRes.data
                     : pkgRes.data?.data || [];
-                const batchList = Array.isArray(batchRes.data)
-                    ? batchRes.data
-                    : batchRes.data?.data || [];
                 setPackages(pkgList);
-                setBatches(batchList);
             } catch {
                 // Non-fatal; filters remain usable
             }
         };
-        loadFilterOptions();
+        loadPackages();
     }, []);
-
-    const filteredBatches = useMemo(() => {
-        if (packageId === "all") return batches;
-        return batches.filter((b) => b.packageId === packageId);
-    }, [batches, packageId]);
 
     const fetchExpenses = useCallback(async () => {
         setLoading(true);
@@ -255,6 +242,7 @@ export default function ExpensesPage() {
         setPaymentType("all");
         setPackageId("all");
         setBatchId("all");
+        setSelectedBatchMeta(null);
         setDateFrom("");
         setDateTo("");
         setMineOnly(false);
@@ -590,39 +578,21 @@ export default function ExpensesPage() {
                                         <label className="text-xs font-medium text-muted-foreground block">
                                             Batch
                                         </label>
-                                        <Select
+                                        <BatchCombobox
                                             value={batchId}
-                                            onValueChange={(v) => {
+                                            packageId={packageId}
+                                            initialBatch={selectedBatchMeta}
+                                            onChange={(v, batch) => {
                                                 setBatchId(v);
+                                                setSelectedBatchMeta(
+                                                    batch || null,
+                                                );
                                                 setPage(1);
                                             }}
-                                        >
-                                            <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="All Batches" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">
-                                                    All Batches
-                                                </SelectItem>
-                                                {filteredBatches.map((b) => (
-                                                    <SelectItem
-                                                        key={b.id}
-                                                        value={b.id}
-                                                    >
-                                                        {b.package?.name ||
-                                                            "Batch"}{" "}
-                                                        (
-                                                        {format(
-                                                            new Date(
-                                                                b.startDate,
-                                                            ),
-                                                            "MMM d, yy",
-                                                        )}
-                                                        )
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            includeAllOption
+                                            allOptionLabel="All Batches"
+                                            placeholder="Search batches..."
+                                        />
                                     </div>
 
                                     <div className="pt-3 border-t space-y-4">
@@ -805,18 +775,14 @@ export default function ExpensesPage() {
                                 className="gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-normal"
                             >
                                 Batch:{" "}
-                                {(() => {
-                                    const b = batches.find(
-                                        (item) => item.id === batchId,
-                                    );
-                                    return b
-                                        ? `${b.package?.name || "Batch"} (${format(new Date(b.startDate), "MMM d")})`
-                                        : "Selected";
-                                })()}
+                                {selectedBatchMeta
+                                    ? `${selectedBatchMeta.package?.name || "Batch"} (${format(new Date(selectedBatchMeta.startDate), "MMM d")})`
+                                    : "Selected"}
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setBatchId("all");
+                                        setSelectedBatchMeta(null);
                                         setPage(1);
                                     }}
                                     className="hover:text-foreground text-muted-foreground"
