@@ -40,6 +40,14 @@ export type IEmployeeStatus =
     | "terminated"
     | "pending_activation";
 
+export interface IEmployeeOption {
+    id: string;
+    name: string;
+    designation?: string;
+    phone?: string;
+    profilePhoto?: string;
+}
+
 export interface IEmployee {
     id: string;
     userId?: string;

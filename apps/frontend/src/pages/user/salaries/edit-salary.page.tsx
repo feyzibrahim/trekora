@@ -29,7 +29,19 @@ import {
     SalarySlipService,
 } from "@/services/salary-slip.service";
 import { SalaryService } from "@/services/salary.service";
-import type { IEmployeeSalary, SalaryStatus } from "@/types/salary.types";
+import type {
+    IEmployeeSalary,
+    IncentiveMode,
+    SalaryStatus,
+} from "@/types/salary.types";
+import {
+    computeIncentiveRowsTotal,
+    createEmptyIncentiveRow,
+    IncentiveSection,
+    type IncentiveRowDraft,
+    serializeIncentiveRows,
+    toIncentiveRowDrafts,
+} from "./_components/incentive-section";
 import { ArrowLeft, Banknote, Loader2, Save } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -53,8 +65,12 @@ export default function EditSalaryPage() {
     const [conveyanceAllowance, setConveyanceAllowance] = useState<number>(0);
     const [medicalAllowance, setMedicalAllowance] = useState<number>(0);
     const [specialAllowance, setSpecialAllowance] = useState<number>(0);
-    const [additionalIncentive, setAdditionalIncentive] = useState<number>(0);
+    const [incentiveMode, setIncentiveMode] = useState<IncentiveMode>("simple");
+    const [additionalIncentive, setAdditionalIncentive] = useState<string>("");
     const [incentiveNote, setIncentiveNote] = useState<string>("");
+    const [incentiveRows, setIncentiveRows] = useState<IncentiveRowDraft[]>([
+        createEmptyIncentiveRow(),
+    ]);
     const [otherEarnings, setOtherEarnings] = useState<number>(0);
 
     const [pfDeduction, setPfDeduction] = useState<number>(0);
@@ -85,8 +101,16 @@ export default function EditSalaryPage() {
                 setConveyanceAllowance(Number(s.conveyanceAllowance || 0));
                 setMedicalAllowance(Number(s.medicalAllowance || 0));
                 setSpecialAllowance(Number(s.specialAllowance || 0));
-                setAdditionalIncentive(Number(s.additionalIncentive || 0));
+                const mode: IncentiveMode =
+                    s.incentiveMode === "itemized" ? "itemized" : "simple";
+                setIncentiveMode(mode);
+                setAdditionalIncentive(
+                    Number(s.additionalIncentive || 0) !== 0
+                        ? String(Number(s.additionalIncentive))
+                        : ""
+                );
                 setIncentiveNote(s.incentiveNote || "");
+                setIncentiveRows(toIncentiveRowDrafts(s.incentiveItems));
                 setOtherEarnings(Number(s.otherEarnings || 0));
                 setPfDeduction(Number(s.pfDeduction || 0));
                 setEsiDeduction(Number(s.esiDeduction || 0));
@@ -122,6 +146,10 @@ export default function EditSalaryPage() {
 
     const payableDays = Math.max(0, totalWorkingDays - unpaidLeaves);
     const daysWorked = Math.max(0, payableDays - paidLeaves);
+    const effectiveIncentive =
+        incentiveMode === "itemized"
+            ? computeIncentiveRowsTotal(incentiveRows)
+            : Number(additionalIncentive || 0);
     const grossEarnings =
         Number(basicSalary || 0) +
         Number(hra || 0) +
@@ -129,7 +157,7 @@ export default function EditSalaryPage() {
         Number(conveyanceAllowance || 0) +
         Number(medicalAllowance || 0) +
         Number(specialAllowance || 0) +
-        Number(additionalIncentive || 0) +
+        effectiveIncentive +
         Number(otherEarnings || 0);
     const totalDeductions =
         Number(pfDeduction || 0) +
@@ -158,8 +186,16 @@ export default function EditSalaryPage() {
                 conveyanceAllowance,
                 medicalAllowance,
                 specialAllowance,
-                additionalIncentive,
-                incentiveNote: incentiveNote.trim() || undefined,
+                incentiveMode,
+                additionalIncentive: effectiveIncentive,
+                incentiveNote:
+                    incentiveMode === "simple"
+                        ? incentiveNote.trim() || undefined
+                        : undefined,
+                incentiveItems:
+                    incentiveMode === "itemized"
+                        ? serializeIncentiveRows(incentiveRows)
+                        : null,
                 otherEarnings,
                 pfDeduction,
                 esiDeduction,
@@ -381,33 +417,16 @@ export default function EditSalaryPage() {
                                 </div>
                             </div>
 
-                            <div className="p-4 rounded-lg border-2 border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-bold text-emerald-700">
-                                        Additional Incentive (₹)
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        value={additionalIncentive}
-                                        onChange={(e) =>
-                                            setAdditionalIncentive(
-                                                Number(e.target.value)
-                                            )
-                                        }
-                                    />
-                                </div>
-                                <div className="space-y-1 sm:col-span-2">
-                                    <Label className="text-xs font-semibold">
-                                        Incentive Note
-                                    </Label>
-                                    <Input
-                                        value={incentiveNote}
-                                        onChange={(e) =>
-                                            setIncentiveNote(e.target.value)
-                                        }
-                                    />
-                                </div>
-                            </div>
+                            <IncentiveSection
+                                mode={incentiveMode}
+                                onModeChange={setIncentiveMode}
+                                simpleAmount={additionalIncentive}
+                                onSimpleAmountChange={setAdditionalIncentive}
+                                simpleNote={incentiveNote}
+                                onSimpleNoteChange={setIncentiveNote}
+                                rows={incentiveRows}
+                                onRowsChange={setIncentiveRows}
+                            />
                         </CardContent>
                     </Card>
 

@@ -3,6 +3,16 @@ import type { IOrganization } from "./organization.types";
 
 export type SalaryStatus = "draft" | "processed" | "paid";
 
+export type IncentiveMode = "simple" | "itemized";
+
+export interface ISalaryIncentiveItem {
+    name: string;
+    type: string;
+    amount: number;
+    count: number;
+    total: number;
+}
+
 export interface ISalarySlipFieldsConfig {
     companyHeaderText?: string;
     companyAddressText?: string;
@@ -73,6 +83,8 @@ export interface IEmployeeSalary {
     specialAllowance: number;
     additionalIncentive: number;
     incentiveNote?: string;
+    incentiveMode?: IncentiveMode;
+    incentiveItems?: ISalaryIncentiveItem[] | null;
     otherEarnings: number;
     grossEarnings: number;
     pfDeduction: number;

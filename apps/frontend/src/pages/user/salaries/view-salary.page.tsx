@@ -476,9 +476,13 @@ export default function ViewSalaryPage() {
                                     <span className="flex items-center gap-1">
                                         <Sparkles className="w-3.5 h-3.5" />
                                         Additional Incentive
-                                        {salary.incentiveNote
-                                            ? ` (${salary.incentiveNote})`
-                                            : ""}
+                                        {salary.incentiveMode === "itemized" &&
+                                        salary.incentiveItems &&
+                                        salary.incentiveItems.length > 0
+                                            ? ` (Itemized — ${salary.incentiveItems.length} ${salary.incentiveItems.length === 1 ? "item" : "items"})`
+                                            : salary.incentiveNote
+                                              ? ` (${salary.incentiveNote})`
+                                              : ""}
                                     </span>
                                     <span className="font-mono font-bold">
                                         {fmt(salary.additionalIncentive)}
@@ -552,6 +556,120 @@ export default function ViewSalaryPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Itemized Incentive Breakdown */}
+                    {salary.incentiveMode === "itemized" &&
+                        salary.incentiveItems &&
+                        salary.incentiveItems.length > 0 && (
+                            <Card className="border border-emerald-500/30 shadow-xs">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-base font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                                        <Sparkles className="w-4 h-4" />
+                                        Incentive Breakdown
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="overflow-x-auto rounded-md border">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200 border-b">
+                                                    <th className="px-3 py-2 text-left font-semibold">
+                                                        Name
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left font-semibold">
+                                                        Type
+                                                    </th>
+                                                    <th className="px-3 py-2 text-right font-semibold">
+                                                        Amount (₹)
+                                                    </th>
+                                                    <th className="px-3 py-2 text-right font-semibold">
+                                                        Count
+                                                    </th>
+                                                    <th className="px-3 py-2 text-right font-semibold">
+                                                        Total (₹)
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50">
+                                                {salary.incentiveItems.map(
+                                                    (item, idx) => {
+                                                        const rowTotal = Number(
+                                                            item.total ??
+                                                                Number(
+                                                                    item.amount ||
+                                                                        0
+                                                                ) *
+                                                                    Number(
+                                                                        item.count ||
+                                                                            0
+                                                                    )
+                                                        );
+                                                        return (
+                                                            <tr key={idx}>
+                                                                <td className="px-3 py-2 font-medium">
+                                                                    {item.name ||
+                                                                        "—"}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-muted-foreground">
+                                                                    {item.type ||
+                                                                        "—"}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right font-mono">
+                                                                    {fmt(
+                                                                        item.amount
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right font-mono">
+                                                                    {Number(
+                                                                        item.count ||
+                                                                            0
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+                                                                    {fmt(
+                                                                        rowTotal
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+                                                )}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr className="border-t-2 border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/30 font-bold text-emerald-800 dark:text-emerald-200">
+                                                    <td
+                                                        colSpan={4}
+                                                        className="px-3 py-2.5 text-right"
+                                                    >
+                                                        Total Incentives
+                                                    </td>
+                                                    <td className="px-3 py-2.5 text-right font-mono text-sm">
+                                                        {fmt(
+                                                            salary.incentiveItems.reduce(
+                                                                (sum, item) =>
+                                                                    sum +
+                                                                    Number(
+                                                                        item.total ??
+                                                                            Number(
+                                                                                item.amount ||
+                                                                                    0
+                                                                            ) *
+                                                                                Number(
+                                                                                    item.count ||
+                                                                                        0
+                                                                                )
+                                                                    ),
+                                                                0
+                                                            )
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                 </div>
 
                 {/* Right Sidebar */}

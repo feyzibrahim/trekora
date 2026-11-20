@@ -7,6 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EmployeeSalaryStructure } from 'src/database/entity/employee-salary-structure.entity';
 import {
   EmployeeSalary,
+  IncentiveMode,
+  SalaryIncentiveItem,
   SalaryStatus,
 } from 'src/database/entity/employee-salary.entity';
 import { Employee } from 'src/database/entity/employee.entity';
@@ -233,6 +235,8 @@ export class SalaryService {
         specialAllowance,
         additionalIncentive: 0,
         incentiveNote: '',
+        incentiveMode: 'simple' as IncentiveMode,
+        incentiveItems: [] as SalaryIncentiveItem[],
         otherEarnings: 0,
         grossEarnings: baseFixedGross,
         pfDeduction,
@@ -266,7 +270,38 @@ export class SalaryService {
     const conveyanceAllowance = Number(payload.conveyanceAllowance) || 0;
     const medicalAllowance = Number(payload.medicalAllowance) || 0;
     const specialAllowance = Number(payload.specialAllowance) || 0;
-    const additionalIncentive = Number(payload.additionalIncentive) || 0;
+    const incentiveMode: IncentiveMode =
+      payload.incentiveMode === 'itemized' ? 'itemized' : 'simple';
+
+    let incentiveItems: SalaryIncentiveItem[] | null = null;
+    let additionalIncentive = Number(payload.additionalIncentive) || 0;
+
+    if (incentiveMode === 'itemized') {
+      const rawItems = Array.isArray(payload.incentiveItems)
+        ? payload.incentiveItems
+        : [];
+      incentiveItems = rawItems
+        .map((item: any) => {
+          const name = String(item?.name ?? '').trim();
+          const type = String(item?.type ?? '').trim();
+          const amount = Number(item?.amount) || 0;
+          const count = Number(item?.count) || 0;
+          const total = Math.round(amount * count * 100) / 100;
+          return { name, type, amount, count, total };
+        })
+        .filter(
+          (item) =>
+            item.name !== '' ||
+            item.type !== '' ||
+            item.amount !== 0 ||
+            item.count !== 0,
+        );
+      additionalIncentive =
+        Math.round(
+          incentiveItems.reduce((sum, item) => sum + item.total, 0) * 100,
+        ) / 100;
+    }
+
     const otherEarnings = Number(payload.otherEarnings) || 0;
 
     const grossEarnings =
@@ -316,6 +351,8 @@ export class SalaryService {
       medicalAllowance,
       specialAllowance,
       additionalIncentive,
+      incentiveMode,
+      incentiveItems,
       otherEarnings,
       grossEarnings,
       pfDeduction,
@@ -727,6 +764,65 @@ export class SalaryService {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`;
+    const escapeHtml = (str?: string | null) =>
+      String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    const incentiveItems =
+      salary.incentiveMode === 'itemized' && Array.isArray(salary.incentiveItems)
+        ? salary.incentiveItems
+        : [];
+    const incentiveTableTotal = incentiveItems.reduce(
+      (sum, item) => sum + Number(item.total || Number(item.amount || 0) * Number(item.count || 0)),
+      0,
+    );
+    const incentiveBreakdownHTML =
+      incentiveItems.length > 0
+        ? `
+            <!-- Itemized Incentive Breakdown -->
+            <div style="margin-bottom: 22px;">
+              <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #059669; margin-bottom: 8px;">
+                Incentive Breakdown
+              </div>
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+                <thead>
+                  <tr style="background-color: #ecfdf5; color: #065f46; font-size: 11px; text-transform: uppercase;">
+                    <th style="padding: 9px 12px; text-align: left; border-bottom: 1px solid #d1fae5;">Name</th>
+                    <th style="padding: 9px 12px; text-align: left; border-bottom: 1px solid #d1fae5;">Type</th>
+                    <th style="padding: 9px 12px; text-align: right; border-bottom: 1px solid #d1fae5;">Amount</th>
+                    <th style="padding: 9px 12px; text-align: right; border-bottom: 1px solid #d1fae5;">Count</th>
+                    <th style="padding: 9px 12px; text-align: right; border-bottom: 1px solid #d1fae5;">Total</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size: 13px;">
+                  ${incentiveItems
+                    .map((item, idx) => {
+                      const rowTotal = Number(
+                        item.total ?? Number(item.amount || 0) * Number(item.count || 0),
+                      );
+                      return `
+                        <tr style="border-bottom: 1px solid #e5e7eb; ${idx % 2 === 1 ? 'background: #f9fafb;' : ''}">
+                          <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(item.name) || '—'}</td>
+                          <td style="padding: 8px 12px; color: #4b5563;">${escapeHtml(item.type) || '—'}</td>
+                          <td style="padding: 8px 12px; text-align: right;">${fmt(item.amount)}</td>
+                          <td style="padding: 8px 12px; text-align: right;">${Number(item.count || 0)}</td>
+                          <td style="padding: 8px 12px; text-align: right; font-weight: 600; color: #059669;">${fmt(rowTotal)}</td>
+                        </tr>
+                      `;
+                    })
+                    .join('')}
+                  <tr style="background: #ecfdf5; font-weight: 700; color: #065f46;">
+                    <td colspan="4" style="padding: 10px 12px; text-align: right;">Total Incentives</td>
+                    <td style="padding: 10px 12px; text-align: right;">${fmt(incentiveTableTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          `
+        : '';
 
     return `
       <!DOCTYPE html>
@@ -841,7 +937,13 @@ export class SalaryService {
                 </tr>
                 <tr style="border-bottom: 1px solid #e5e7eb;">
                   <td style="padding: 9px 12px; color: #059669; font-weight: 600;">
-                    Additional Incentive ${salary.incentiveNote ? `<span style="font-weight: 400; font-size: 11px; color: #6b7280;">(${salary.incentiveNote})</span>` : ''}
+                    Additional Incentive ${
+                      incentiveItems.length > 0
+                        ? `<span style="font-weight: 400; font-size: 11px; color: #6b7280;">(Itemized — ${incentiveItems.length} ${incentiveItems.length === 1 ? 'item' : 'items'})</span>`
+                        : salary.incentiveNote
+                          ? `<span style="font-weight: 400; font-size: 11px; color: #6b7280;">(${escapeHtml(salary.incentiveNote)})</span>`
+                          : ''
+                    }
                   </td>
                   <td style="padding: 9px 12px; text-align: right; font-weight: 700; color: #059669; border-right: 1px solid #e5e7eb;">${fmt(salary.additionalIncentive)}</td>
                   <td style="padding: 9px 12px;"></td>
@@ -865,6 +967,8 @@ export class SalaryService {
                 </tr>
               </tbody>
             </table>
+
+            ${incentiveBreakdownHTML}
 
             <!-- Net Payable Highlight -->
             <div style="background: #f0fdf4; border: 2px solid ${color}; border-radius: 10px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">

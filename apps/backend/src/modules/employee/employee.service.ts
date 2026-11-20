@@ -177,6 +177,29 @@ export class EmployeeService {
     return employees;
   }
 
+  // Get lightweight employee options (id, name, designation, phone, profilePhoto) for selectors
+  async findOptions(
+    organizationId: string,
+    showArchived = false,
+  ): Promise<
+    Pick<Employee, 'id' | 'name' | 'designation' | 'phone' | 'profilePhoto'>[]
+  > {
+    return this.employeeRepository.find({
+      select: {
+        id: true,
+        name: true,
+        designation: true,
+        phone: true,
+        profilePhoto: true,
+      },
+      where: {
+        organizationId,
+        isArchived: showArchived,
+      },
+      order: { name: 'ASC' },
+    });
+  }
+
   // Get a single employee by ID
   async findOne(id: string): Promise<Employee | null> {
     const employee = await this.employeeRepository.findOne({ where: { id } });
