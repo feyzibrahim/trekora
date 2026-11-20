@@ -152,13 +152,16 @@ export default function CreateSalaryPage() {
     );
     const [remarks, setRemarks] = useState<string>("");
 
+    const [loadingEmployees, setLoadingEmployees] = useState(true);
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
+        setLoadingEmployees(true);
         EmployeeService.getEmployeeOptions()
             .then((data) => setEmployees(data || []))
-            .catch(() => { });
+            .catch(() => {})
+            .finally(() => setLoadingEmployees(false));
     }, []);
 
     const loadPreviewForEmployee = useCallback(
@@ -440,6 +443,11 @@ export default function CreateSalaryPage() {
                                                             : ""}
                                                     </span>
                                                 </div>
+                                            ) : loadingEmployees ? (
+                                                <span className="text-muted-foreground text-sm flex items-center gap-2">
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    Loading employees...
+                                                </span>
                                             ) : (
                                                 <span className="text-muted-foreground text-sm">
                                                     Choose employee
@@ -478,7 +486,12 @@ export default function CreateSalaryPage() {
                                             )}
                                         </div>
                                         <div className="max-h-64 overflow-y-auto p-1 divide-y divide-border/30">
-                                            {filteredEmployees.length === 0 ? (
+                                            {loadingEmployees ? (
+                                                <div className="p-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    <span>Loading employees...</span>
+                                                </div>
+                                            ) : filteredEmployees.length === 0 ? (
                                                 <div className="p-4 text-center text-xs text-muted-foreground">
                                                     {employeeSearch
                                                         ? `No employees found matching "${employeeSearch}"`
