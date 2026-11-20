@@ -39,7 +39,7 @@ export default function CreateExpensePage() {
     };
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
             <Breadcrumb>
                 <BreadcrumbList>
                     <BreadcrumbItem>

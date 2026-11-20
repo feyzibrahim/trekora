@@ -62,7 +62,7 @@ export default function EditExpensePage() {
 
     if (loading) {
         return (
-            <div className="p-6 max-w-4xl mx-auto space-y-6">
+            <div className="p-6 space-y-6">
                 <Skeleton className="h-6 w-48" />
                 <Skeleton className="h-10 w-72" />
                 <Skeleton className="h-96 w-full rounded-xl" />
@@ -73,7 +73,7 @@ export default function EditExpensePage() {
     if (!expense) return null;
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
             <Breadcrumb>
                 <BreadcrumbList>
                     <BreadcrumbItem>

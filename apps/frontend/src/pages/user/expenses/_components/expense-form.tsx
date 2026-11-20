@@ -16,6 +16,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import axiosInstance from "@/lib/axios";
 import { getFileUrl } from "@/lib/utils";
 import ExpenseService from "@/services/expense.service";
@@ -378,11 +379,19 @@ export function ExpenseForm({
                             <Label htmlFor="transferDate">
                                 Required Transfer Date *
                             </Label>
-                            <Input
-                                id="transferDate"
-                                type="date"
-                                min={isEdit ? undefined : todayStr}
-                                {...register("transferDate")}
+                            <Controller
+                                control={control}
+                                name="transferDate"
+                                render={({ field }) => (
+                                    <TypableDatePicker
+                                        id="transferDate"
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        min={isEdit ? undefined : todayStr}
+                                        placeholder="DD-MM-YYYY"
+                                        required
+                                    />
+                                )}
                             />
                             <p className="text-[11px] text-muted-foreground">
                                 Select today or a future date when this payment

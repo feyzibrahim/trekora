@@ -189,7 +189,7 @@ export default function ViewExpensePage() {
 
     if (loading) {
         return (
-            <div className="p-6 max-w-7xl mx-auto space-y-6">
+            <div className="p-6 space-y-6">
                 <Skeleton className="h-6 w-56" />
                 <Skeleton className="h-44 w-full rounded-xl" />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -216,7 +216,7 @@ export default function ViewExpensePage() {
         (expense.status === "approved" && canApprove);
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="p-6 space-y-6">
             {/* 1. Top Navigation & Action Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <Breadcrumb>

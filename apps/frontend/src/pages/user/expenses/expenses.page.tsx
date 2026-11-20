@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { TypableDatePicker } from "@/components/ui/typable-date-picker";
 import {
     Table,
     TableBody,
@@ -659,32 +660,27 @@ export default function ExpensesPage() {
                                                 <label className="text-xs font-medium text-muted-foreground block">
                                                     From
                                                 </label>
-                                                <Input
-                                                    type="date"
+                                                <TypableDatePicker
                                                     value={dateFrom}
-                                                    onChange={(e) => {
-                                                        setDateFrom(
-                                                            e.target.value,
-                                                        );
+                                                    onChange={(val) => {
+                                                        setDateFrom(val);
                                                         setPage(1);
                                                     }}
-                                                    className="w-full"
+                                                    placeholder="DD-MM-YYYY"
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-xs font-medium text-muted-foreground block">
                                                     To
                                                 </label>
-                                                <Input
-                                                    type="date"
+                                                <TypableDatePicker
                                                     value={dateTo}
-                                                    onChange={(e) => {
-                                                        setDateTo(
-                                                            e.target.value,
-                                                        );
+                                                    onChange={(val) => {
+                                                        setDateTo(val);
                                                         setPage(1);
                                                     }}
-                                                    className="w-full"
+                                                    min={dateFrom || undefined}
+                                                    placeholder="DD-MM-YYYY"
                                                 />
                                             </div>
                                         </div>

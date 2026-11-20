@@ -4,6 +4,13 @@ This document establishes the UI/UX design patterns, component standards, and vi
 
 ---
 
+## 0. Page Container & Full-Width Layout Rule
+
+- All authenticated application pages (list, create, edit, and details pages) **must** use a full-width container (e.g., `<div className="p-6 space-y-6">`) inside `<SidebarInset>`.
+- **Never** center page content inside narrow max-width wrappers (do not use `max-w-3xl mx-auto`, `max-w-4xl mx-auto`, `max-w-7xl mx-auto`, etc. on page roots).
+
+---
+
 ## 1. Details & View Page Architecture
 
 All entity view/details pages (e.g., `view-booking.page.tsx`, `view-payment.page.tsx`, `view-customer.page.tsx`, and future modules) must follow a unified layout structure consisting of three primary layers:
@@ -145,8 +152,11 @@ Pill badges should include an indicator dot:
     ```
 - **Date & Time Formatting (`date-fns`)**:
   - Display dates: `format(date, "MMM d, yyyy")` (e.g., "Sep 7, 2026").
-  - Audit timestamps: `format(date, "MMM d, yyyy • HH:mm")` (e.g., "Sep 7, 2026 • 15:30").
+  - Audit timestamps: `format(date, "MMM d, yyyy • h:mm a")` (e.g., "Sep 7, 2026 • 3:30 PM").
   - Relative time: `formatDistanceToNow(date, { addSuffix: true })` (e.g., "2 hours ago").
+- **Date Picker Input Standard (`<TypableDatePicker />`)**:
+  - Always use `<TypableDatePicker />` (`@/components/ui/typable-date-picker`) for all date inputs in forms, dialogs, and filter panels so date entry and calendar popovers match across the entire application.
+  - Do **not** use raw browser `<Input type="date" />` inputs.
 - **Copy-to-Clipboard Elements**:
   - Provide a copy button beside codes, booking numbers, payment IDs, customer contact details, and invite links.
   - Temporarily swap the icon to `<Check className="w-3.5 h-3.5 text-emerald-600" />` on copy and fire a toast.
