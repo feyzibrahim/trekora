@@ -36,6 +36,70 @@ export class OrganizationController {
     return await this.organizationService.findAll();
   }
 
+  // Get logged-in user's organizations with admin status & pending deletion requests
+  @Get('my/managed')
+  async getManagedOrganizations(@Request() req: ApiRequestJWT) {
+    return await this.organizationService.getManagedOrganizations(
+      req.user.userId,
+      req.user.organizationId,
+    );
+  }
+
+  // Leave an organization (for non-admin members)
+  @Post(':id/leave')
+  async leaveOrganization(
+    @Request() req: ApiRequestJWT,
+    @Param('id') id: string,
+  ) {
+    return await this.organizationService.leaveOrganization(
+      req.user.userId,
+      id,
+      req.user.organizationId,
+    );
+  }
+
+  // Delete an organization (immediate if single admin, creates approval request if multiple admins)
+  @Post(':id/request-delete')
+  async requestDeleteOrganization(
+    @Request() req: ApiRequestJWT,
+    @Param('id') id: string,
+  ) {
+    return await this.organizationService.requestDeleteOrganization(
+      req.user.userId,
+      id,
+      req.user.organizationId,
+    );
+  }
+
+  // Approve a pending organization deletion request
+  @Post(':id/delete-requests/:requestId/approve')
+  async approveDeleteRequest(
+    @Request() req: ApiRequestJWT,
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return await this.organizationService.approveDeleteRequest(
+      req.user.userId,
+      id,
+      requestId,
+      req.user.organizationId,
+    );
+  }
+
+  // Reject or cancel a pending organization deletion request
+  @Post(':id/delete-requests/:requestId/reject')
+  async rejectDeleteRequest(
+    @Request() req: ApiRequestJWT,
+    @Param('id') id: string,
+    @Param('requestId') requestId: string,
+  ) {
+    return await this.organizationService.rejectDeleteRequest(
+      req.user.userId,
+      id,
+      requestId,
+    );
+  }
+
   // Get block slots change logs for an organization
   @Get(':id/block-slots-logs')
   async getBlockSlotLogs(@Param('id') id: string) {

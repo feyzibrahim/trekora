@@ -713,7 +713,9 @@ export class AuthService {
       where: { userId, isActive: true },
       relations: ['organization'],
     });
-    return userOrgs.map(uo => uo.organization);
+    return userOrgs
+      .map((uo) => uo.organization)
+      .filter((org) => org && org.isActive !== false);
   }
 
   async switchOrganization(userId: string, organizationId: string): Promise<any> {

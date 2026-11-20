@@ -3,6 +3,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import {
@@ -18,6 +19,7 @@ import { useAuth } from "@/context/authContext";
 import { useHasPermission } from "@/hooks/use-permissions";
 import axiosInstance from "@/lib/axios";
 import { ApprovalService } from "@/services/approval.service";
+import { OrganizationService } from "@/services/organization.service";
 import type { IEmployee } from "@/types/employee.types";
 import {
     Banknote,
@@ -36,6 +38,7 @@ import {
     ListTodo,
     Loader2,
     Receipt,
+    Settings2,
     SettingsIcon,
     Shield,
     ShieldAlert,
@@ -45,8 +48,9 @@ import {
     UsersIcon,
     Wallet
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ManageOrganizationsDialog } from "./manage-organizations-dialog";
 import { NavDocuments } from "./nav-documents";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -59,6 +63,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const [organizations, setOrganizations] = useState<any[]>([]);
     const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null);
     const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+    const [manageOrgsOpen, setManageOrgsOpen] = useState(false);
+    const [pendingOrgDeletionCount, setPendingOrgDeletionCount] = useState(0);
     const { hasPermission: canManagePermissions, loading: permissionsLoading } = useHasPermission(
         "permission",
         "manage",
@@ -113,6 +119,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }
     }, [canReadApprovals]);
 
+    const fetchOrganizations = useCallback(async () => {
+        try {
+            const [orgRes, managed] = await Promise.all([
+                axiosInstance.get<any[]>("/auth/user-organizations"),
+                OrganizationService.getManagedOrganizations().catch(() => []),
+            ]);
+            if (orgRes) {
+                setOrganizations(orgRes.data);
+            }
+            const awaitingApproval = managed.filter(
+                (org) =>
+                    org.isAdmin &&
+                    org.pendingDeletionRequest &&
+                    !org.pendingDeletionRequest.hasCurrentUserApproved
+            ).length;
+            setPendingOrgDeletionCount(awaitingApproval);
+        } catch (error) {
+            console.error("Error fetching user organizations:", error);
+        }
+    }, []);
+
     useEffect(() => {
         const getProfile = async () => {
             try {
@@ -126,20 +153,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             }
         };
 
-        const getOrganizations = async () => {
-            try {
-                const res = await axiosInstance.get<any[]>("/auth/user-organizations");
-                if (res) {
-                    setOrganizations(res.data);
-                }
-            } catch (error) {
-                console.error("Error fetching user organizations:", error);
-            }
-        };
-
         getProfile();
-        getOrganizations();
-    }, []);
+        fetchOrganizations();
+    }, [fetchOrganizations]);
 
     const handleSwitch = async (organizationId: string) => {
         setSwitchingOrgId(organizationId);
@@ -413,6 +429,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                         )}
                                     </DropdownMenuItem>
                                 ))}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onSelect={() => setManageOrgsOpen(true)}
+                                    className="gap-2 p-2 cursor-pointer"
+                                >
+                                    <div className="flex size-6 items-center justify-center rounded-sm border bg-background">
+                                        <Settings2 className="size-3.5 shrink-0" />
+                                    </div>
+                                    <span className="flex-1 text-sm font-medium">
+                                        Manage Organizations
+                                    </span>
+                                    {pendingOrgDeletionCount > 0 && (
+                                        <span className="ml-auto inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold px-1.5 h-4 min-w-4">
+                                            {pendingOrgDeletionCount}
+                                        </span>
+                                    )}
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </SidebarMenuItem>
@@ -431,6 +464,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <QuickCreateModal
                 open={quickCreateOpen}
                 onOpenChange={setQuickCreateOpen}
+            />
+            <ManageOrganizationsDialog
+                open={manageOrgsOpen}
+                onOpenChange={setManageOrgsOpen}
+                onOrganizationsChanged={fetchOrganizations}
             />
             <SidebarFooter>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

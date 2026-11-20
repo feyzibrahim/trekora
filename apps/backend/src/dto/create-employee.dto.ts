@@ -7,6 +7,10 @@ export class IEmployeeCreateDTO {
 
   @IsString()
   @IsOptional()
+  createdById?: string;
+
+  @IsString()
+  @IsOptional()
   name?: string;
 
   @IsEmail()

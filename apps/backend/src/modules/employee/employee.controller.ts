@@ -55,7 +55,8 @@ export class EmployeeController {
       {
         ...employeeData,
         organizationId: req.user.organizationId,
-        userId: req.user.userId,
+        createdById: req.user.userId,
+        userId: undefined,
       },
       allFiles,
     );
